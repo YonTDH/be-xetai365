@@ -26,49 +26,25 @@ function getVehicleById(req, res) {
 }
 
 function createVehicle(req, res) {
-  const requiredFields = ["slug", "title", "brand", "year", "priceVnd"];
-  const missing = requiredFields.filter((key) => !req.body?.[key]);
-
-  if (missing.length > 0) {
-    return res.status(400).json({
-      success: false,
-      message: `Missing required fields: ${missing.join(", ")}`,
-    });
-  }
-
-  const vehicle = vehicleModel.create(req.body);
-
-  return res.status(201).json({
-    success: true,
-    data: vehicle,
+  return res.status(501).json({
+    success: false,
+    message:
+      "Vehicle write APIs are disabled in the migration skeleton. Use /api/catalog/products as the primary public read API.",
   });
 }
 
 function updateVehicle(req, res) {
-  const vehicle = vehicleModel.update(req.params.id, req.body || {});
-  if (!vehicle) {
-    return res.status(404).json({
-      success: false,
-      message: "Vehicle not found",
-    });
-  }
-
-  return res.json({
-    success: true,
-    data: vehicle,
+  return res.status(501).json({
+    success: false,
+    message: "Vehicle write APIs are disabled in the migration skeleton.",
   });
 }
 
 function deleteVehicle(req, res) {
-  const deleted = vehicleModel.delete(req.params.id);
-  if (!deleted) {
-    return res.status(404).json({
-      success: false,
-      message: "Vehicle not found",
-    });
-  }
-
-  return res.status(204).send();
+  return res.status(501).json({
+    success: false,
+    message: "Vehicle write APIs are disabled in the migration skeleton.",
+  });
 }
 
 module.exports = {
