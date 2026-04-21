@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
 const { productCategories, products, legacyRoutes } = require("../data/siteData");
 
@@ -247,6 +248,29 @@ async function ensureSeedData() {
         ]
       );
     }
+  }
+
+  const adminUserCountResult = await getPool().query(
+    "SELECT COUNT(*)::int AS total FROM admin_users"
+  );
+  const adminUserCount = adminUserCountResult.rows[0]?.total || 0;
+
+  if (adminUserCount === 0) {
+    const username = String(process.env.ADMIN_USERNAME || "admin").trim().toLowerCase();
+    const plainPassword = String(process.env.ADMIN_PASSWORD || "admin123");
+    const fullName = String(process.env.ADMIN_FULL_NAME || "System Admin");
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
+
+    await getPool().query(
+      `
+      INSERT INTO admin_users (
+        username, password_hash, full_name, status, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, 'active', NOW(), NOW())
+      ON CONFLICT (username) DO NOTHING
+      `,
+      [username, passwordHash, fullName]
+    );
   }
 }
 

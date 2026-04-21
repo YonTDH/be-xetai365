@@ -35,6 +35,11 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=xetai365
 POSTGRES_SSL=false
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+ADMIN_FULL_NAME=System Admin
+JWT_SECRET=change-this-jwt-secret
+JWT_EXPIRES_IN=8h
 ```
 
 ## Migration PostgreSQL
@@ -68,11 +73,13 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 
 - `GET /api/health`: health check.
 - `GET /`: ping root message.
+- `POST /api/admin/auth/login`: dang nhap admin, tra JWT token.
+- `GET /api/admin/auth/me`: thong tin admin dang nhap (can Bearer token).
 
 ### Cau hinh
 
 - `GET /api/settings`: lay setting website.
-- `PUT /api/settings`: cap nhat setting.
+- `PUT /api/settings`: cap nhat setting (can Bearer token admin).
 
 ### Xe / Noi dung cong khai
 
@@ -95,8 +102,8 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 ### Form lien he
 
 - `POST /api/contact-requests`
-- `GET /api/contact-requests`
-- `PATCH /api/contact-requests/:id/status` (admin)
+- `GET /api/contact-requests` (can Bearer token admin)
+- `PATCH /api/contact-requests/:id/status` (can Bearer token admin)
 
 ### Mapping URL legacy
 
