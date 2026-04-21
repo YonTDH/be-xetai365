@@ -17,8 +17,13 @@ function mapRow(row) {
 
 class ContactRequestModel {
   async create(payload) {
-    const vehicleId = Number(payload.vehicleId);
-    const safeVehicleId = Number.isFinite(vehicleId) ? vehicleId : null;
+    const rawVehicleId = payload.vehicleId;
+    const safeVehicleId =
+      rawVehicleId === null || rawVehicleId === undefined || rawVehicleId === ""
+        ? null
+        : Number.isFinite(Number(rawVehicleId))
+          ? Number(rawVehicleId)
+          : null;
 
     const result = await getPool().query(
       `
