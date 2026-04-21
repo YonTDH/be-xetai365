@@ -77,6 +77,11 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 - `GET /api/admin/auth/me`: thong tin admin dang nhap (can Bearer token).
 - `GET /api/admin/vehicle-categories`: danh sach loai xe (khong can token).
 - `POST /api/admin/vehicle-categories`: tao/cap nhat loai xe (can Bearer token admin, ho tro `parentId`/`parentSlug` de tao category con).
+- `GET /api/admin/bulletins`: danh sach ban tin (can Bearer token admin).
+- `GET /api/admin/bulletins/:id`: chi tiet ban tin theo id (can Bearer token admin).
+- `POST /api/admin/bulletins`: tao ban tin (can Bearer token admin).
+- `PUT /api/admin/bulletins/:id`: sua ban tin (can Bearer token admin).
+- `DELETE /api/admin/bulletins/:id`: xoa ban tin (can Bearer token admin).
 
 ### Cau hinh
 
@@ -99,6 +104,8 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 - `GET /api/content/news/categories`
 - `GET /api/content/news`
 - `GET /api/content/news/:idOrSlug`
+- `GET /api/content/bulletins`
+- `GET /api/content/bulletins/:idOrSlug`
 - `GET /api/content/pages/:slug`
 - `GET /api/search?q=...`
 

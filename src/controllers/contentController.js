@@ -1,17 +1,21 @@
 const catalogModel = require("../models/catalogModel");
 const contentModel = require("../models/contentModel");
+const bulletinModel = require("../models/bulletinModel");
 const settingModel = require("../models/settingModel");
 
 async function getHome(_req, res) {
   try {
     const setting = await settingModel.get();
     const featuredProducts = await catalogModel.getFeaturedProducts(6);
+    const latestNews = (await bulletinModel.list({ page: 1, limit: 3 }, { publicOnly: true }))
+      .items;
 
     res.json({
       success: true,
       data: contentModel.getHomeData({
         featuredProducts,
         setting,
+        latestNews,
       }),
     });
   } catch (error) {
@@ -22,33 +26,95 @@ async function getHome(_req, res) {
   }
 }
 
-function listNewsCategories(_req, res) {
-  res.json({
-    success: true,
-    data: contentModel.listNewsCategories(),
-  });
-}
-
-function listNews(req, res) {
-  res.json({
-    success: true,
-    data: contentModel.listNews(req.query),
-  });
-}
-
-function getNewsDetail(req, res) {
-  const article = contentModel.findNewsByIdOrSlug(req.params.idOrSlug);
-  if (!article) {
-    return res.status(404).json({
+async function listNewsCategories(_req, res) {
+  try {
+    const data = await bulletinModel.listTypeStats();
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
-      message: "Article not found",
+      message: error.message,
     });
   }
+}
 
-  return res.json({
-    success: true,
-    data: article,
-  });
+async function listNews(req, res) {
+  try {
+    const data = await bulletinModel.list(req.query, { publicOnly: true });
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function getNewsDetail(req, res) {
+  try {
+    const article = await bulletinModel.findByIdOrSlug(req.params.idOrSlug, {
+      publicOnly: true,
+    });
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        message: "Article not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: article,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function listBulletins(req, res) {
+  try {
+    const data = await bulletinModel.list(req.query, { publicOnly: true });
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function getBulletinDetail(req, res) {
+  try {
+    const item = await bulletinModel.findByIdOrSlug(req.params.idOrSlug, { publicOnly: true });
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Bulletin not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: item,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }
 
 function getPage(req, res) {
@@ -71,5 +137,7 @@ module.exports = {
   listNewsCategories,
   listNews,
   getNewsDetail,
+  listBulletins,
+  getBulletinDetail,
   getPage,
 };

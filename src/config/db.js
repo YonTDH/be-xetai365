@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
-const { productCategories, products, legacyRoutes } = require("../data/siteData");
+const { productCategories, products, newsArticles, legacyRoutes } = require("../data/siteData");
 
 let pool;
 
@@ -12,6 +12,15 @@ function toBoolean(value, fallback = false) {
   }
 
   return String(value).trim().toLowerCase() === "true";
+}
+
+function guessBulletinType(article) {
+  const categorySlug = String(article?.categorySlug || "").trim().toLowerCase();
+  if (categorySlug.includes("khuyen-mai") || categorySlug.includes("promotion")) {
+    return "promotion";
+  }
+
+  return "news_event";
 }
 
 function getPool() {
@@ -245,6 +254,38 @@ async function ensureSeedData() {
           route.target || "/",
           route.resourceType || "page",
           route.resourceSlug || "",
+        ]
+      );
+    }
+  }
+
+  const bulletinCountResult = await getPool().query(
+    "SELECT COUNT(*)::int AS total FROM bulletins"
+  );
+  const bulletinCount = bulletinCountResult.rows[0]?.total || 0;
+
+  if (bulletinCount === 0) {
+    for (const article of newsArticles) {
+      await getPool().query(
+        `
+        INSERT INTO bulletins (
+          slug, bulletin_type, title, excerpt, content, status,
+          published_at, seo, created_at, updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, 'published',
+          $6::timestamptz, $7::jsonb, NOW(), NOW()
+        )
+        ON CONFLICT (slug) DO NOTHING
+        `,
+        [
+          article.slug,
+          guessBulletinType(article),
+          article.title,
+          article.excerpt || "",
+          article.content || "",
+          article.publishedAt || new Date().toISOString(),
+          JSON.stringify(article.seo || {}),
         ]
       );
     }

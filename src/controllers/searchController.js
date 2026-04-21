@@ -1,5 +1,5 @@
 const catalogModel = require("../models/catalogModel");
-const contentModel = require("../models/contentModel");
+const bulletinModel = require("../models/bulletinModel");
 const { normalizeText } = require("../utils/request");
 
 async function search(req, res) {
@@ -19,11 +19,16 @@ async function search(req, res) {
         limit: 6,
       })
     ).items;
-    const newsItems = contentModel.listNews({
-      keyword,
-      page: 1,
-      limit: 6,
-    }).items;
+    const newsItems = (
+      await bulletinModel.list(
+        {
+          keyword,
+          page: 1,
+          limit: 6,
+        },
+        { publicOnly: true }
+      )
+    ).items;
 
     return res.json({
       success: true,
