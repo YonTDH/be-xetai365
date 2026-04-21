@@ -81,6 +81,39 @@ class ContactRequestModel {
       },
     };
   }
+
+  async updateStatus(id, status) {
+    const safeId = Number(id);
+    if (!Number.isFinite(safeId)) {
+      return null;
+    }
+
+    const normalizedStatus = String(status || "").trim().toLowerCase();
+
+    const result = await getPool().query(
+      `
+      UPDATE contact_requests
+      SET
+        status = $2::text,
+        contacted_at = CASE
+          WHEN $2::text = 'contacted' AND contacted_at IS NULL THEN NOW()::timestamptz
+          ELSE contacted_at
+        END::timestamptz,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id, full_name, email, phone, content, vehicle_id, status,
+        contacted_at, created_at, updated_at
+      `,
+      [safeId, normalizedStatus]
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return mapRow(result.rows[0]);
+  }
 }
 
 module.exports = new ContactRequestModel();

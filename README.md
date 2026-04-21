@@ -96,6 +96,7 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 
 - `POST /api/contact-requests`
 - `GET /api/contact-requests`
+- `PATCH /api/contact-requests/:id/status` (admin)
 
 ### Mapping URL legacy
 
