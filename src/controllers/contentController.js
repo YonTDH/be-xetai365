@@ -2,14 +2,23 @@ const catalogModel = require("../models/catalogModel");
 const contentModel = require("../models/contentModel");
 const settingModel = require("../models/settingModel");
 
-function getHome(_req, res) {
-  res.json({
-    success: true,
-    data: contentModel.getHomeData({
-      featuredProducts: catalogModel.getFeaturedProducts(6),
-      setting: settingModel.get(),
-    }),
-  });
+async function getHome(_req, res) {
+  try {
+    const setting = await settingModel.get();
+
+    res.json({
+      success: true,
+      data: contentModel.getHomeData({
+        featuredProducts: catalogModel.getFeaturedProducts(6),
+        setting,
+      }),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }
 
 function listNewsCategories(_req, res) {

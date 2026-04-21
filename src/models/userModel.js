@@ -1,63 +1,81 @@
-const MAX_USERS = 1000;
+const { getPool } = require("../config/db");
+
+function mapUserRow(row) {
+  return {
+    id: row.id,
+    username: row.username,
+    fullName: row.full_name,
+    email: row.email,
+    phone: row.phone,
+    role: row.role,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
 
 class UserModel {
-  constructor() {
-    this.users = this.buildSeedUsers();
-    this.userIndex = new Map(this.users.map((user) => [user.id, user]));
-  }
-
-  buildSeedUsers() {
-    const result = [];
-
-    for (let i = 1; i <= MAX_USERS; i += 1) {
-      const id = i;
-      result.push({
-        id,
-        username: `user${String(i).padStart(4, "0")}`,
-        fullName: `XeTai User ${i}`,
-        email: `user${String(i).padStart(4, "0")}@xetai365.local`,
-        phone: `090${String(i).padStart(7, "0")}`,
-        role: i === 1 ? "admin" : "customer",
-        status: i % 20 === 0 ? "inactive" : "active",
-        createdAt: new Date(Date.now() - i * 60000).toISOString(),
-      });
-    }
-
-    return result;
-  }
-
-  list({ page = 1, limit = 20, search = "" } = {}) {
+  async list({ page = 1, limit = 20, search = "" } = {}) {
     const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
     const safePage = Math.max(Number(page) || 1, 1);
+    const offset = (safePage - 1) * safeLimit;
     const keyword = String(search || "").trim().toLowerCase();
 
-    const filteredUsers = keyword
-      ? this.users.filter((user) => {
-          return (
-            user.username.toLowerCase().includes(keyword) ||
-            user.fullName.toLowerCase().includes(keyword) ||
-            user.email.toLowerCase().includes(keyword)
-          );
-        })
-      : this.users;
+    const whereSql = keyword
+      ? `WHERE LOWER(username) LIKE $1 OR LOWER(full_name) LIKE $1 OR LOWER(email) LIKE $1`
+      : "";
+    const whereParams = keyword ? [`%${keyword}%`] : [];
 
-    const start = (safePage - 1) * safeLimit;
-    const items = filteredUsers.slice(start, start + safeLimit);
+    const countResult = await getPool().query(
+      `SELECT COUNT(*)::int AS total FROM users ${whereSql}`,
+      whereParams
+    );
+    const totalItems = countResult.rows[0]?.total || 0;
+
+    const listParams = [...whereParams, safeLimit, offset];
+    const itemsResult = await getPool().query(
+      `
+      SELECT id, username, full_name, email, phone, role, status, created_at
+      FROM users
+      ${whereSql}
+      ORDER BY id ASC
+      LIMIT $${whereParams.length + 1}
+      OFFSET $${whereParams.length + 2}
+      `,
+      listParams
+    );
 
     return {
-      items,
+      items: itemsResult.rows.map(mapUserRow),
       pagination: {
         page: safePage,
         limit: safeLimit,
-        totalItems: filteredUsers.length,
-        totalPages: Math.ceil(filteredUsers.length / safeLimit),
+        totalItems,
+        totalPages: Math.ceil(totalItems / safeLimit),
       },
     };
   }
 
-  findById(id) {
+  async findById(id) {
     const parsedId = Number(id);
-    return this.userIndex.get(parsedId) || null;
+    if (!Number.isFinite(parsedId)) {
+      return null;
+    }
+
+    const result = await getPool().query(
+      `
+      SELECT id, username, full_name, email, phone, role, status, created_at
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [parsedId]
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return mapUserRow(result.rows[0]);
   }
 }
 

@@ -1,19 +1,35 @@
 const settingModel = require("../models/settingModel");
 
-function getSetting(_req, res) {
-  res.json({
-    success: true,
-    data: settingModel.get(),
-  });
+async function getSetting(_req, res) {
+  try {
+    const setting = await settingModel.get();
+
+    res.json({
+      success: true,
+      data: setting,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }
 
-function updateSetting(req, res) {
-  const updated = settingModel.update(req.body || {});
+async function updateSetting(req, res) {
+  try {
+    const updated = await settingModel.update(req.body || {});
 
-  res.json({
-    success: true,
-    data: updated,
-  });
+    res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }
 
 module.exports = {

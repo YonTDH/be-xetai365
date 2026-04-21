@@ -1,54 +1,157 @@
+const { getPool } = require("../config/db");
+
+function mapSettingRow(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    keywords: row.keywords,
+    description: row.description,
+    giupdochiase: row.giupdochiase,
+    ten: row.ten,
+    email: row.email,
+    website: row.website,
+    dienthoai: row.dienthoai,
+    diachi: row.diachi,
+    fax: row.fax,
+    tennv: row.tennv,
+    hotline: row.hotline,
+    tennv1: row.tennv1,
+    hotline1: row.hotline1,
+    tennv2: row.tennv2,
+    hotline2: row.hotline2,
+    toado: row.toado,
+    facebook: row.facebook,
+    youtube: row.youtube,
+    yahoo: row.yahoo,
+    skype: row.skype,
+    twitter: row.twitter,
+    zing: row.zing,
+    google: row.google,
+    tip: row.tip,
+    linktip: row.linktip,
+    analytics: row.analytics,
+    dangky: row.dangky,
+    tietkiem: row.tietkiem,
+    hailong: row.hailong,
+    updatedAt: row.updated_at,
+  };
+}
+
 class SettingModel {
-  constructor() {
-    this.setting = {
-      id: 1,
-      title: "Xe Tai - Xe Dau Keo - Xe Chuyen Dung",
-      keywords: "dongfeng, howo, hyundai, xe tai",
-      description: "Thong tin cau hinh website va lien he cho XeTai365",
-      giupdochiase: 3,
-      ten: "XE TAI 365 GROUP",
-      email: "vanducbon99@gmail.com",
-      website: "https://xetai365.vn",
-      dienthoai: "0899.966.254",
-      diachi: "So 16, Duong Dan Cau Phu Long, Binh Duong",
-      fax: "0899.966.254",
-      tennv: "",
-      hotline: "0899.966.254",
-      tennv1: "",
-      hotline1: "",
-      tennv2: "",
-      hotline2: "",
-      toado: "",
-      facebook: "https://www.facebook.com/profile.php?id=100072217597486",
-      youtube: "https://www.youtube.com/channel/UC24fCjRcXuDH1dnbgGewb1A",
-      yahoo: "",
-      skype: "",
-      twitter: "http://twitter.com",
-      zing: "",
-      google: "https://plus.google.com/u/0/",
-      tip: "<button>Chat</button>",
-      linktip: "",
-      analytics: "",
-      dangky: "",
-      tietkiem:
-        "<iframe src='https://www.google.com/maps/embed?pb=sample'></iframe>",
-      hailong: "",
-      updatedAt: new Date().toISOString(),
-    };
+  async get() {
+    const result = await getPool().query(
+      `
+      SELECT
+        id, title, keywords, description, giupdochiase, ten, email, website,
+        dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
+        hotline2, toado, facebook, youtube, yahoo, skype, twitter, zing,
+        google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
+      FROM settings
+      WHERE id = 1
+      LIMIT 1
+      `
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return mapSettingRow(result.rows[0]);
   }
 
-  get() {
-    return this.setting;
-  }
-
-  update(partialPayload = {}) {
-    this.setting = {
-      ...this.setting,
-      ...partialPayload,
+  async update(partialPayload = {}) {
+    const current = await this.get();
+    const merged = {
+      ...(current || {}),
+      ...(partialPayload || {}),
       id: 1,
-      updatedAt: new Date().toISOString(),
     };
-    return this.setting;
+
+    const result = await getPool().query(
+      `
+      INSERT INTO settings (
+        id, title, keywords, description, giupdochiase, ten, email, website,
+        dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
+        hotline2, toado, facebook, youtube, yahoo, skype, twitter, zing,
+        google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
+      )
+      VALUES (
+        1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        title = EXCLUDED.title,
+        keywords = EXCLUDED.keywords,
+        description = EXCLUDED.description,
+        giupdochiase = EXCLUDED.giupdochiase,
+        ten = EXCLUDED.ten,
+        email = EXCLUDED.email,
+        website = EXCLUDED.website,
+        dienthoai = EXCLUDED.dienthoai,
+        diachi = EXCLUDED.diachi,
+        fax = EXCLUDED.fax,
+        tennv = EXCLUDED.tennv,
+        hotline = EXCLUDED.hotline,
+        tennv1 = EXCLUDED.tennv1,
+        hotline1 = EXCLUDED.hotline1,
+        tennv2 = EXCLUDED.tennv2,
+        hotline2 = EXCLUDED.hotline2,
+        toado = EXCLUDED.toado,
+        facebook = EXCLUDED.facebook,
+        youtube = EXCLUDED.youtube,
+        yahoo = EXCLUDED.yahoo,
+        skype = EXCLUDED.skype,
+        twitter = EXCLUDED.twitter,
+        zing = EXCLUDED.zing,
+        google = EXCLUDED.google,
+        tip = EXCLUDED.tip,
+        linktip = EXCLUDED.linktip,
+        analytics = EXCLUDED.analytics,
+        dangky = EXCLUDED.dangky,
+        tietkiem = EXCLUDED.tietkiem,
+        hailong = EXCLUDED.hailong,
+        updated_at = NOW()
+      RETURNING
+        id, title, keywords, description, giupdochiase, ten, email, website,
+        dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
+        hotline2, toado, facebook, youtube, yahoo, skype, twitter, zing,
+        google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
+      `,
+      [
+        merged.title || "",
+        merged.keywords || "",
+        merged.description || "",
+        Number(merged.giupdochiase) || 0,
+        merged.ten || "",
+        merged.email || "",
+        merged.website || "",
+        merged.dienthoai || "",
+        merged.diachi || "",
+        merged.fax || "",
+        merged.tennv || "",
+        merged.hotline || "",
+        merged.tennv1 || "",
+        merged.hotline1 || "",
+        merged.tennv2 || "",
+        merged.hotline2 || "",
+        merged.toado || "",
+        merged.facebook || "",
+        merged.youtube || "",
+        merged.yahoo || "",
+        merged.skype || "",
+        merged.twitter || "",
+        merged.zing || "",
+        merged.google || "",
+        merged.tip || "",
+        merged.linktip || "",
+        merged.analytics || "",
+        merged.dangky || "",
+        merged.tietkiem || "",
+        merged.hailong || "",
+      ]
+    );
+
+    return mapSettingRow(result.rows[0]);
   }
 }
 

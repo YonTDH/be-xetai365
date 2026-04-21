@@ -46,11 +46,17 @@ class ContentModel {
   }
 
   getHomeData({ featuredProducts, setting }) {
+    const safeSetting = setting || {
+      title: "",
+      description: "",
+      hotline: "",
+    };
+
     return {
       hero: {
-        title: setting.title,
-        description: setting.description,
-        hotline: setting.hotline,
+        title: safeSetting.title,
+        description: safeSetting.description,
+        hotline: safeSetting.hotline,
       },
       featuredProducts,
       latestNews: newsArticles.slice(0, 3),

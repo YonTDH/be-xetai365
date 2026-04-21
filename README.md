@@ -3,7 +3,8 @@
 Backend Node.js + Express cho du an XeTai365.
 
 Trang thai hien tai: migration skeleton tu PHP legacy sang API Node.js.
-Du lieu dang la in-memory seed de FE tich hop nhanh, chua gan DB that.
+Du lieu static (catalog/content/legacy routes) dang doc tu `src/data/siteData.js`.
+Du lieu stateful (`users`, `settings`, `cart`, `orders`) da chay tren PostgreSQL.
 
 ## Yeu cau
 
@@ -27,7 +28,29 @@ Tao file `.env` tu `.env.example`:
 PORT=3000
 CLIENT_URL=http://localhost:5173
 API_PREFIX=/api
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=xetai365
+POSTGRES_SSL=false
 ```
+
+## Migration PostgreSQL
+
+Chay migration schema:
+
+```bash
+npm run migrate
+```
+
+Migration SQL nam trong thu muc `migrations/`.
+
+Khi khoi dong app (`npm run dev` / `npm start`), backend se:
+- ket noi PostgreSQL;
+- kiem tra va apply migration chua chay;
+- bo qua migration da ton tai;
+- seed du lieu mac dinh cho `settings` va `users` neu bang rong.
 
 ## Cau truc chinh
 
