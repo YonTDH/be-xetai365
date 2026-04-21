@@ -7,6 +7,8 @@ function mapRow(row) {
     name: row.name,
     type: row.type,
     description: row.description,
+    parentId: row.parent_id || null,
+    parentSlug: row.parent_slug || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -16,13 +18,44 @@ class VehicleCategoryModel {
   async list() {
     const result = await getPool().query(
       `
-      SELECT id, slug, name, type, description, created_at, updated_at
-      FROM vehicle_categories
-      ORDER BY id ASC
+      SELECT
+        vc.id, vc.slug, vc.name, vc.type, vc.description,
+        vc.parent_id, pvc.slug AS parent_slug,
+        vc.created_at, vc.updated_at
+      FROM vehicle_categories vc
+      LEFT JOIN vehicle_categories pvc ON pvc.id = vc.parent_id
+      ORDER BY vc.id ASC
       `
     );
 
     return result.rows.map(mapRow);
+  }
+
+  async getSlugToIdMap(client) {
+    const result = await client.query("SELECT id, slug FROM vehicle_categories");
+    const map = new Map();
+    for (const row of result.rows) {
+      map.set(row.slug, Number(row.id));
+    }
+    return map;
+  }
+
+  resolveParentId(item, slugToIdMap) {
+    const parsedParentId = Number(item.parentId);
+    if (Number.isFinite(parsedParentId) && parsedParentId > 0) {
+      return parsedParentId;
+    }
+
+    const parentSlug = String(item.parentSlug || "").trim().toLowerCase();
+    if (!parentSlug) {
+      return null;
+    }
+
+    if (!slugToIdMap.has(parentSlug)) {
+      return undefined;
+    }
+
+    return slugToIdMap.get(parentSlug);
   }
 
   async upsertMany(items) {
@@ -32,32 +65,104 @@ class VehicleCategoryModel {
     try {
       await client.query("BEGIN");
 
-      for (const item of items) {
-        const result = await client.query(
-          `
-          INSERT INTO vehicle_categories (slug, name, type, description, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, NOW(), NOW())
-          ON CONFLICT (slug) DO UPDATE SET
-            name = EXCLUDED.name,
-            type = EXCLUDED.type,
-            description = EXCLUDED.description,
-            updated_at = NOW()
-          RETURNING id, slug, name, type, description, created_at, updated_at
-          `,
-          [item.slug, item.name, item.type, item.description]
-        );
+      const slugToIdMap = await this.getSlugToIdMap(client);
+      const pending = [...items];
+      let hasProgress = true;
 
-        createdOrUpdated.push(mapRow(result.rows[0]));
+      while (pending.length > 0 && hasProgress) {
+        hasProgress = false;
+        const nextPending = [];
+
+        for (const item of pending) {
+          const parentId = this.resolveParentId(item, slugToIdMap);
+          if (typeof parentId === "undefined") {
+            nextPending.push(item);
+            continue;
+          }
+
+          if (parentId && slugToIdMap.get(item.slug) === parentId) {
+            throw new Error(`Category '${item.slug}' cannot be its own parent`);
+          }
+
+          const result = await client.query(
+            `
+            INSERT INTO vehicle_categories (
+              slug, name, type, description, parent_id, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+            ON CONFLICT (slug) DO UPDATE SET
+              name = EXCLUDED.name,
+              type = EXCLUDED.type,
+              description = EXCLUDED.description,
+              parent_id = EXCLUDED.parent_id,
+              updated_at = NOW()
+            RETURNING id, slug
+            `,
+            [item.slug, item.name, item.type, item.description, parentId]
+          );
+
+          const id = Number(result.rows[0].id);
+          slugToIdMap.set(item.slug, id);
+          createdOrUpdated.push(item.slug);
+          hasProgress = true;
+        }
+
+        pending.splice(0, pending.length, ...nextPending);
       }
 
+      if (pending.length > 0) {
+        throw new Error(
+          `Cannot resolve parent for category slug(s): ${pending
+            .map((item) => item.slug)
+            .join(", ")}`
+        );
+      }
+
+      const refreshed = await client.query(
+        `
+        SELECT
+          vc.id, vc.slug, vc.name, vc.type, vc.description,
+          vc.parent_id, pvc.slug AS parent_slug,
+          vc.created_at, vc.updated_at
+        FROM vehicle_categories vc
+        LEFT JOIN vehicle_categories pvc ON pvc.id = vc.parent_id
+        WHERE vc.slug = ANY($1::text[])
+        ORDER BY vc.id ASC
+        `,
+        [createdOrUpdated]
+      );
+
       await client.query("COMMIT");
-      return createdOrUpdated;
+      return refreshed.rows.map(mapRow);
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
     }
+  }
+
+  async listTree() {
+    const categories = await this.list();
+    const byId = new Map();
+    const roots = [];
+
+    for (const category of categories) {
+      byId.set(category.id, {
+        ...category,
+        children: [],
+      });
+    }
+
+    for (const category of byId.values()) {
+      if (category.parentId && byId.has(category.parentId)) {
+        byId.get(category.parentId).children.push(category);
+      } else {
+        roots.push(category);
+      }
+    }
+
+    return roots;
   }
 }
 

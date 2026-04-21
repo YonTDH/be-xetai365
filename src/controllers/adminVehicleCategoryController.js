@@ -1,11 +1,15 @@
 const vehicleCategoryModel = require("../models/vehicleCategoryModel");
 
 function normalizeInputItem(item) {
+  const parsedParentId = Number(item?.parentId);
+
   return {
     slug: String(item?.slug || "").trim().toLowerCase(),
     name: String(item?.name || "").trim(),
     type: String(item?.type || "product-list").trim(),
     description: String(item?.description || "").trim(),
+    parentId: Number.isFinite(parsedParentId) ? parsedParentId : null,
+    parentSlug: String(item?.parentSlug || "").trim().toLowerCase(),
   };
 }
 
@@ -15,6 +19,9 @@ function validateItem(item) {
   }
   if (!item.name) {
     return "Missing name";
+  }
+  if (item.parentId && item.parentId < 1) {
+    return "Invalid parentId";
   }
   return null;
 }

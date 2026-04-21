@@ -48,10 +48,14 @@ class CatalogModel {
         vc.name,
         vc.type,
         vc.description,
+        vc.parent_id,
+        pvc.slug AS parent_slug,
         COUNT(v.id)::int AS product_count
       FROM vehicle_categories vc
+      LEFT JOIN vehicle_categories pvc ON pvc.id = vc.parent_id
       LEFT JOIN vehicles v ON v.category_id = vc.id
-      GROUP BY vc.id, vc.slug, vc.name, vc.type, vc.description
+      GROUP BY
+        vc.id, vc.slug, vc.name, vc.type, vc.description, vc.parent_id, pvc.slug
       ORDER BY vc.id ASC
     `);
 
@@ -61,8 +65,33 @@ class CatalogModel {
       name: row.name,
       type: row.type,
       description: row.description,
+      parentId: row.parent_id || null,
+      parentSlug: row.parent_slug || null,
       productCount: row.product_count,
     }));
+  }
+
+  async listCategoriesTree() {
+    const categories = await this.listCategories();
+    const byId = new Map();
+    const roots = [];
+
+    for (const category of categories) {
+      byId.set(category.id, {
+        ...category,
+        children: [],
+      });
+    }
+
+    for (const category of byId.values()) {
+      if (category.parentId && byId.has(category.parentId)) {
+        byId.get(category.parentId).children.push(category);
+      } else {
+        roots.push(category);
+      }
+    }
+
+    return roots;
   }
 
   async listProducts(filters = {}) {
@@ -99,7 +128,20 @@ class CatalogModel {
 
     if (category.length > 0) {
       params.push(category);
-      whereClauses.push(`LOWER(vc.slug) = $${params.length}`);
+      whereClauses.push(`
+        v.category_id IN (
+          WITH RECURSIVE category_tree AS (
+            SELECT id
+            FROM vehicle_categories
+            WHERE LOWER(slug) = $${params.length}
+            UNION ALL
+            SELECT vc2.id
+            FROM vehicle_categories vc2
+            JOIN category_tree ct ON vc2.parent_id = ct.id
+          )
+          SELECT id FROM category_tree
+        )
+      `);
     }
 
     if (condition.length > 0) {

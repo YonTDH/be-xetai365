@@ -15,6 +15,21 @@ async function listCategories(_req, res) {
   }
 }
 
+async function listCategoriesTree(_req, res) {
+  try {
+    const categories = await catalogModel.listCategoriesTree();
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 async function listProducts(req, res) {
   try {
     const products = await catalogModel.listProducts(req.query);
@@ -54,6 +69,7 @@ async function getProductDetail(req, res) {
 
 module.exports = {
   listCategories,
+  listCategoriesTree,
   listProducts,
   getProductDetail,
 };
