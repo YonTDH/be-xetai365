@@ -2,34 +2,43 @@ const catalogModel = require("../models/catalogModel");
 const contentModel = require("../models/contentModel");
 const { normalizeText } = require("../utils/request");
 
-function search(req, res) {
-  const keyword = normalizeText(req.query.q);
-  if (!keyword) {
-    return res.status(400).json({
+async function search(req, res) {
+  try {
+    const keyword = normalizeText(req.query.q);
+    if (!keyword) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing search query",
+      });
+    }
+
+    const productItems = (
+      await catalogModel.listProducts({
+        keyword,
+        page: 1,
+        limit: 6,
+      })
+    ).items;
+    const newsItems = contentModel.listNews({
+      keyword,
+      page: 1,
+      limit: 6,
+    }).items;
+
+    return res.json({
+      success: true,
+      data: {
+        keyword,
+        products: productItems,
+        news: newsItems,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
-      message: "Missing search query",
+      message: error.message,
     });
   }
-
-  const productItems = catalogModel.listProducts({
-    keyword,
-    page: 1,
-    limit: 6,
-  }).items;
-  const newsItems = contentModel.listNews({
-    keyword,
-    page: 1,
-    limit: 6,
-  }).items;
-
-  return res.json({
-    success: true,
-    data: {
-      keyword,
-      products: productItems,
-      news: newsItems,
-    },
-  });
 }
 
 module.exports = {

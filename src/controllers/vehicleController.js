@@ -1,28 +1,42 @@
 const vehicleModel = require("../models/vehicleModel");
 
-function listVehicles(req, res) {
-  const { page, limit, keyword, brand, status } = req.query;
-  const data = vehicleModel.list({ page, limit, keyword, brand, status });
+async function listVehicles(req, res) {
+  try {
+    const { page, limit, keyword, brand, status } = req.query;
+    const data = await vehicleModel.list({ page, limit, keyword, brand, status });
 
-  res.json({
-    success: true,
-    data,
-  });
-}
-
-function getVehicleById(req, res) {
-  const vehicle = vehicleModel.findById(req.params.id);
-  if (!vehicle) {
-    return res.status(404).json({
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
       success: false,
-      message: "Vehicle not found",
+      message: error.message,
     });
   }
+}
 
-  return res.json({
-    success: true,
-    data: vehicle,
-  });
+async function getVehicleById(req, res) {
+  try {
+    const vehicle = await vehicleModel.findById(req.params.id);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: "Vehicle not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: vehicle,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }
 
 function createVehicle(req, res) {

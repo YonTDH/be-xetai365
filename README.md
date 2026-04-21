@@ -4,7 +4,8 @@ Backend Node.js + Express cho du an XeTai365.
 
 Trang thai hien tai: migration skeleton tu PHP legacy sang API Node.js.
 Du lieu static (catalog/content/legacy routes) dang doc tu `src/data/siteData.js`.
-Du lieu stateful (`users`, `settings`, `cart`, `orders`) da chay tren PostgreSQL.
+Du lieu stateful (`settings`, `vehicles`, `vehicle_categories`, `contact_requests`, `legacy_routes`) da chay tren PostgreSQL.
+Model `xe` va `loai xe` da migrate qua PostgreSQL (`vehicles`, `vehicle_categories`).
 
 ## Yeu cau
 
@@ -50,7 +51,7 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 - ket noi PostgreSQL;
 - kiem tra va apply migration chua chay;
 - bo qua migration da ton tai;
-- seed du lieu mac dinh cho `settings` va `users` neu bang rong.
+- seed du lieu mac dinh cho `settings`, `vehicle_categories`, `vehicles` neu bang rong.
 
 ## Cau truc chinh
 
@@ -71,14 +72,19 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 ### Cau hinh
 
 - `GET /api/settings`: lay setting website.
-- `PUT /api/settings`: cap nhat setting (in-memory).
+- `PUT /api/settings`: cap nhat setting.
 
-### Catalog / Public content
+### Xe / Noi dung cong khai
 
 - `GET /api/catalog/categories`
 - `GET /api/catalog/products`
   - query ho tro: `page, limit, keyword, brand, status, category, condition, featured`
 - `GET /api/catalog/products/:idOrSlug`
+- `GET /api/vehicles`
+- `GET /api/vehicles/:id`
+- `POST /api/vehicles` -> `501 Not Implemented`
+- `PUT /api/vehicles/:id` -> `501 Not Implemented`
+- `DELETE /api/vehicles/:id` -> `501 Not Implemented`
 - `GET /api/content/home`
 - `GET /api/content/news/categories`
 - `GET /api/content/news`
@@ -86,60 +92,28 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 - `GET /api/content/pages/:slug`
 - `GET /api/search?q=...`
 
-### Gio hang / Don hang (demo in-memory)
+### Form lien he
 
-- `POST /api/cart/items`
-- `GET /api/cart/:cartId`
-- `PATCH /api/cart/:cartId/items/:productId`
-- `DELETE /api/cart/:cartId/items/:productId`
-- `POST /api/orders`
-- `GET /api/orders`
-- `GET /api/orders/:id`
+- `POST /api/contact-requests`
+- `GET /api/contact-requests`
 
 ### Mapping URL legacy
 
 - `GET /api/legacy-routes`
 - `GET /api/legacy-routes/resolve?path=/gioi-thieu.html`
 
-### Legacy compatibility
-
-- `GET /api/users`
-- `GET /api/users/:id`
-- `GET /api/vehicles`
-- `GET /api/vehicles/:id`
-- `POST /api/vehicles` -> `501 Not Implemented`
-- `PUT /api/vehicles/:id` -> `501 Not Implemented`
-- `DELETE /api/vehicles/:id` -> `501 Not Implemented`
-
 ## Vi du nhanh
 
-### Them vao gio hang
+### Gui form lien he
 
 ```bash
-curl -X POST http://localhost:3000/api/cart/items \
+curl -X POST http://localhost:3000/api/contact-requests \
   -H "Content-Type: application/json" \
-  -d '{"productId":1,"quantity":2}'
-```
-
-### Tao don hang
-
-```bash
-curl -X POST http://localhost:3000/api/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cartId":"<cart-id>",
-    "customer":{
-      "fullName":"Nguyen Van A",
-      "phone":"0900000000",
-      "address":"Binh Duong",
-      "email":"a@example.com"
-    },
-    "note":"Giao gio hanh chinh"
-  }'
+  -d '{"fullName":"Nguyen Van A","phone":"0900000000","email":"a@example.com","content":"Can tu van xe tai","vehicleId":1}'
 ```
 
 ## Ghi chu migration
 
-- Skeleton nay uu tien luong public, search, cart, order va mapping route SEO legacy.
+- Skeleton nay uu tien luong public, lead form lien he va mapping route SEO legacy.
 - Chua co auth/RBAC, validation schema day du, upload/media service, email queue.
 - Buoc tiep theo: gan ORM + MySQL schema moi, bo sung auth va migration data tu legacy.

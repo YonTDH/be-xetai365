@@ -5,11 +5,12 @@ const settingModel = require("../models/settingModel");
 async function getHome(_req, res) {
   try {
     const setting = await settingModel.get();
+    const featuredProducts = await catalogModel.getFeaturedProducts(6);
 
     res.json({
       success: true,
       data: contentModel.getHomeData({
-        featuredProducts: catalogModel.getFeaturedProducts(6),
+        featuredProducts,
         setting,
       }),
     });

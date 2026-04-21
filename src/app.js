@@ -1,14 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const healthRouter = require("./routes/health");
-const usersRouter = require("./routes/users");
 const settingsRouter = require("./routes/settings");
 const vehiclesRouter = require("./routes/vehicles");
 const catalogRouter = require("./routes/catalog");
 const contentRouter = require("./routes/content");
 const searchRouter = require("./routes/search");
-const cartRouter = require("./routes/cart");
-const ordersRouter = require("./routes/orders");
+const contactRequestsRouter = require("./routes/contactRequests");
 const legacyRoutesRouter = require("./routes/legacyRoutes");
 
 const app = express();
@@ -29,14 +27,12 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/health", healthRouter);
-app.use("/api/users", usersRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/vehicles", vehiclesRouter);
 app.use("/api/catalog", catalogRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/search", searchRouter);
-app.use("/api/cart", cartRouter);
-app.use("/api/orders", ordersRouter);
+app.use("/api/contact-requests", contactRequestsRouter);
 app.use("/api/legacy-routes", legacyRoutesRouter);
 
 app.use((req, res) => {

@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { Pool } = require("pg");
+const { productCategories, products, legacyRoutes } = require("../data/siteData");
 
 let pool;
 
@@ -142,19 +143,111 @@ async function ensureSeedData() {
     ON CONFLICT (id) DO NOTHING
   `);
 
-  await getPool().query(`
-    INSERT INTO users (username, full_name, email, phone, role, status, created_at)
-    SELECT
-      'user' || LPAD(gs::text, 4, '0'),
-      'XeTai User ' || gs::text,
-      'user' || LPAD(gs::text, 4, '0') || '@xetai365.local',
-      '090' || LPAD(gs::text, 7, '0'),
-      CASE WHEN gs = 1 THEN 'admin' ELSE 'customer' END,
-      CASE WHEN (gs % 20) = 0 THEN 'inactive' ELSE 'active' END,
-      NOW() - (gs || ' minutes')::interval
-    FROM generate_series(1, 1000) AS gs
-    WHERE NOT EXISTS (SELECT 1 FROM users)
-  `);
+  const categoryCountResult = await getPool().query(
+    "SELECT COUNT(*)::int AS total FROM vehicle_categories"
+  );
+  const categoryCount = categoryCountResult.rows[0]?.total || 0;
+
+  if (categoryCount === 0) {
+    for (const category of productCategories) {
+      await getPool().query(
+        `
+        INSERT INTO vehicle_categories (id, slug, name, type, description, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        ON CONFLICT (id) DO NOTHING
+        `,
+        [
+          category.id,
+          category.slug,
+          category.name,
+          category.type || "product-list",
+          category.description || "",
+        ]
+      );
+    }
+  }
+
+  const vehicleCountResult = await getPool().query(
+    "SELECT COUNT(*)::int AS total FROM vehicles"
+  );
+  const vehicleCount = vehicleCountResult.rows[0]?.total || 0;
+
+  if (vehicleCount === 0) {
+    const categoryIdBySlug = new Map(
+      productCategories.map((category) => [category.slug, category.id])
+    );
+
+    for (const vehicle of products) {
+      await getPool().query(
+        `
+        INSERT INTO vehicles (
+          id, category_id, slug, legacy_path, title, sku, brand, vehicle_type,
+          condition, year, mileage_km, fuel_type, transmission, price_vnd,
+          status, is_featured, location, short_description, content, images,
+          seo, created_at, updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8,
+          $9, $10, $11, $12, $13, $14,
+          $15, $16, $17, $18, $19, $20::jsonb,
+          $21::jsonb, $22::timestamptz, $23::timestamptz
+        )
+        ON CONFLICT (id) DO NOTHING
+        `,
+        [
+          vehicle.id,
+          categoryIdBySlug.get(vehicle.categorySlug),
+          vehicle.slug,
+          vehicle.legacyPath || "",
+          vehicle.title,
+          vehicle.sku || "",
+          vehicle.brand || "",
+          vehicle.type || "",
+          vehicle.condition || "",
+          Number(vehicle.year) || 0,
+          Number(vehicle.mileageKm) || 0,
+          vehicle.fuelType || "",
+          vehicle.transmission || "",
+          Number(vehicle.priceVnd) || 0,
+          vehicle.status || "available",
+          Boolean(vehicle.isFeatured),
+          vehicle.location || "",
+          vehicle.shortDescription || "",
+          vehicle.content || "",
+          JSON.stringify(vehicle.images || []),
+          JSON.stringify(vehicle.seo || {}),
+          vehicle.createdAt || new Date().toISOString(),
+          vehicle.updatedAt || new Date().toISOString(),
+        ]
+      );
+    }
+  }
+
+  const legacyRouteCountResult = await getPool().query(
+    "SELECT COUNT(*)::int AS total FROM legacy_routes"
+  );
+  const legacyRouteCount = legacyRouteCountResult.rows[0]?.total || 0;
+
+  if (legacyRouteCount === 0) {
+    for (const route of legacyRoutes) {
+      await getPool().query(
+        `
+        INSERT INTO legacy_routes (
+          path, type, target, resource_type, resource_slug, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        ON CONFLICT (path) DO NOTHING
+        `,
+        [
+          route.path,
+          route.type || "page",
+          route.target || "/",
+          route.resourceType || "page",
+          route.resourceSlug || "",
+        ]
+      );
+    }
+  }
 }
 
 async function connectDatabase() {

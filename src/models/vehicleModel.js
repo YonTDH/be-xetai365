@@ -1,11 +1,11 @@
 const catalogModel = require("./catalogModel");
 
 class VehicleModel {
-  list(filters) {
+  async list(filters) {
     return catalogModel.listProducts(filters);
   }
 
-  findById(id) {
+  async findById(id) {
     return catalogModel.findProductByIdOrSlug(id);
   }
 
