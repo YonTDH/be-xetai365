@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const healthRouter = require("./routes/health");
 const adminAuthRouter = require("./routes/adminAuth");
+const adminVehicleCategoriesRouter = require("./routes/adminVehicleCategories");
 const settingsRouter = require("./routes/settings");
 const vehiclesRouter = require("./routes/vehicles");
 const catalogRouter = require("./routes/catalog");
@@ -29,6 +30,7 @@ app.get("/", (_req, res) => {
 
 app.use("/api/health", healthRouter);
 app.use("/api/admin/auth", adminAuthRouter);
+app.use("/api/admin/vehicle-categories", adminVehicleCategoriesRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/vehicles", vehiclesRouter);
 app.use("/api/catalog", catalogRouter);

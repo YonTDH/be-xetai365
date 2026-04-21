@@ -75,6 +75,8 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 - `GET /`: ping root message.
 - `POST /api/admin/auth/login`: dang nhap admin, tra JWT token.
 - `GET /api/admin/auth/me`: thong tin admin dang nhap (can Bearer token).
+- `GET /api/admin/vehicle-categories`: danh sach loai xe (khong can token).
+- `POST /api/admin/vehicle-categories`: tao/cap nhat loai xe (can Bearer token admin).
 
 ### Cau hinh
 
