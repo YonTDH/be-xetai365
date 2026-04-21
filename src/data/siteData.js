@@ -187,12 +187,12 @@ const newsCategories = [
   {
     id: 1,
     slug: "tin-thi-truong",
-    name: "Tin thi truong",
+    name: "Tin thị trường",
   },
   {
     id: 2,
     slug: "kinh-nghiem-mua-xe",
-    name: "Kinh nghiem mua xe",
+    name: "Kinh nghiệm mua xe",
   },
 ];
 
@@ -202,14 +202,14 @@ const newsArticles = [
     slug: "thi-truong-xe-tai-quy-2-2026",
     legacyPath: "/thi-truong-xe-tai-quy-2-2026.html",
     categorySlug: "tin-thi-truong",
-    title: "Thi truong xe tai quy 2/2026",
-    excerpt: "Nhu cau xe tai trung va nang tang o nhom logistics va vat lieu xay dung.",
+    title: "Thị trường xe tải quý 2/2026",
+    excerpt: "Nhu cầu xe tải trung và nặng tăng ở nhóm logistics và vật liệu xây dựng.",
     content:
-      "Bao cao noi bo cho thay nhom xe tai 8 tan va dau keo dang duoc quan tam manh nhat trong quy 2/2026.",
+      "Báo cáo nội bộ cho thấy nhóm xe tải 8 tấn và đầu kéo đang được quan tâm mạnh nhất trong quý 2/2026.",
     publishedAt: now,
     seo: {
-      title: "Thi truong xe tai quy 2/2026 | XeTai365",
-      description: "Cap nhat thi truong xe tai va nhu cau van tai quy 2/2026.",
+      title: "Thị trường xe tải quý 2/2026 | XeTải365",
+      description: "Cập nhật thị trường xe tải và nhu cầu vận tải quý 2/2026.",
     },
   },
   {
@@ -217,14 +217,14 @@ const newsArticles = [
     slug: "kinh-nghiem-chon-xe-tai-cu",
     legacyPath: "/kinh-nghiem-chon-xe-tai-cu.html",
     categorySlug: "kinh-nghiem-mua-xe",
-    title: "Kinh nghiem chon xe tai cu",
-    excerpt: "5 diem can kiem tra truoc khi mua xe tai da qua su dung.",
+    title: "Kinh nghiệm chọn xe tải cũ",
+    excerpt: "5 điểm cần kiểm tra trước khi mua xe tải đã qua sử dụng.",
     content:
-      "Can kiem tra khung gam, dong co, lich su bao duong, giay to va tinh phu hop cua xe voi loai hang van chuyen.",
+      "Cần kiểm tra khung gầm, động cơ, lịch sử bảo dưỡng, giấy tờ và tính phù hợp của xe với loại hàng vận chuyển.",
     publishedAt: now,
     seo: {
-      title: "Kinh nghiem chon xe tai cu | XeTai365",
-      description: "Huong dan kiem tra xe tai cu truoc khi xuong tien.",
+      title: "Kinh nghiệm chọn xe tải cũ | XeTải365",
+      description: "Hướng dẫn kiểm tra xe tải cũ trước khi xuống tiền.",
     },
   },
 ];
@@ -232,22 +232,22 @@ const newsArticles = [
 const pages = [
   {
     slug: "gioi-thieu",
-    title: "Gioi thieu XeTai365",
+    title: "Giới thiệu XeTải365",
     content:
-      "XeTai365 cung cap xe tai, xe dau keo, xe chuyen dung va dich vu tu van giai phap van tai cho doanh nghiep.",
+      "XeTải365 cung cấp xe tải, xe đầu kéo, xe chuyên dụng và dịch vụ tư vấn giải pháp vận tải cho doanh nghiệp.",
     seo: {
-      title: "Gioi thieu | XeTai365",
-      description: "Thong tin gioi thieu ve XeTai365.",
+      title: "Giới thiệu | XeTải365",
+      description: "Thông tin giới thiệu về XeTải365.",
     },
   },
   {
     slug: "lien-he",
-    title: "Lien he",
+    title: "Liên hệ",
     content:
-      "Lien he XeTai365 qua hotline 0899.966.254 hoac den showroom tai Binh Duong de duoc tu van.",
+      "Liên hệ XeTải365 qua hotline 0899.966.254 hoặc đến showroom tại Bình Dương để được tư vấn.",
     seo: {
-      title: "Lien he | XeTai365",
-      description: "Thong tin lien he XeTai365.",
+      title: "Liên hệ | XeTải365",
+      description: "Thông tin liên hệ XeTải365.",
     },
   },
 ];
