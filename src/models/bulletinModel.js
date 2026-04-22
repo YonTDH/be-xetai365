@@ -53,21 +53,45 @@ function normalizeStatus(value) {
   return ALLOWED_STATUSES.has(normalized) ? normalized : null;
 }
 
-function mapRow(row) {
-  return {
-    id: row.id,
-    slug: row.slug,
-    type: row.bulletin_type,
-    bulletinType: row.bulletin_type,
-    title: row.title,
-    excerpt: row.excerpt,
-    content: row.content,
-    status: row.status,
-    publishedAt: toIsoString(row.published_at),
-    seo: row.seo || {},
-    createdAt: toIsoString(row.created_at),
-    updatedAt: toIsoString(row.updated_at),
-  };
+function normalizeBoolean(value, fallback = true) {
+  if (typeof value === "undefined" || value === null) {
+    return fallback;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+}
+
+function normalizePositiveInt(value, fallback = 1) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function normalizeOptionalId(value) {
+  if (typeof value === "undefined" || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return undefined;
+  }
+
+  return parsed;
 }
 
 function toSafeSeo(value) {
@@ -76,6 +100,85 @@ function toSafeSeo(value) {
   }
   return value;
 }
+
+function toSafeString(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim();
+}
+
+function resolveImageUrlFromSeo(seo) {
+  const safeSeo = toSafeSeo(seo);
+  const openGraph =
+    safeSeo.openGraph && typeof safeSeo.openGraph === "object" && !Array.isArray(safeSeo.openGraph)
+      ? safeSeo.openGraph
+      : {};
+
+  return (
+    toSafeString(safeSeo.imageUrl) ||
+    toSafeString(safeSeo.image) ||
+    toSafeString(safeSeo.thumbnail) ||
+    toSafeString(safeSeo.thumbnailUrl) ||
+    toSafeString(safeSeo.coverImage) ||
+    toSafeString(safeSeo.cover_image) ||
+    toSafeString(safeSeo.ogImage) ||
+    toSafeString(openGraph.image) ||
+    ""
+  );
+}
+
+function mapRow(row) {
+  const safeSeo = toSafeSeo(row.seo);
+  const directImageUrl = toSafeString(row.image_url);
+
+  return {
+    id: row.id,
+    slug: row.slug,
+    type: row.bulletin_type,
+    bulletinType: row.bulletin_type,
+    categoryId: row.category_id || null,
+    title: row.title,
+    name: row.name,
+    excerpt: row.excerpt,
+    descriptionShort: row.description_short,
+    content: row.content,
+    status: row.status,
+    sortOrder: row.sort_order,
+    isVisible: row.is_visible,
+    publishedAt: toIsoString(row.published_at),
+    imageUrl: directImageUrl || resolveImageUrlFromSeo(safeSeo),
+    titleSeo: row.title_seo,
+    keywords: row.keywords,
+    metaDescription: row.meta_description,
+    seo: safeSeo,
+    createdAt: toIsoString(row.created_at),
+    updatedAt: toIsoString(row.updated_at),
+  };
+}
+
+const BULLETIN_SELECT_COLUMNS = `
+  id,
+  slug,
+  bulletin_type,
+  category_id,
+  title,
+  name,
+  excerpt,
+  description_short,
+  content,
+  image_url,
+  status,
+  title_seo,
+  keywords,
+  meta_description,
+  sort_order,
+  is_visible,
+  published_at,
+  seo,
+  created_at,
+  updated_at
+`;
 
 class BulletinModel {
   getTypes() {
@@ -90,7 +193,7 @@ class BulletinModel {
     const result = await getPool().query(`
       SELECT bulletin_type, COUNT(*)::int AS article_count
       FROM bulletins
-      WHERE status = 'published'
+      WHERE status = 'published' AND is_visible = TRUE
       GROUP BY bulletin_type
     `);
 
@@ -119,7 +222,14 @@ class BulletinModel {
     if (keyword.length > 0) {
       params.push(`%${keyword}%`);
       whereClauses.push(
-        `(LOWER(title) LIKE $${params.length} OR LOWER(excerpt) LIKE $${params.length} OR LOWER(content) LIKE $${params.length} OR LOWER(slug) LIKE $${params.length})`
+        `(
+          LOWER(title) LIKE $${params.length}
+          OR LOWER(name) LIKE $${params.length}
+          OR LOWER(excerpt) LIKE $${params.length}
+          OR LOWER(description_short) LIKE $${params.length}
+          OR LOWER(content) LIKE $${params.length}
+          OR LOWER(slug) LIKE $${params.length}
+        )`
       );
     }
 
@@ -128,11 +238,28 @@ class BulletinModel {
       whereClauses.push(`LOWER(bulletin_type) = $${params.length}`);
     }
 
+    const categoryId = normalizeOptionalId(filters.categoryId || filters.category_id);
+    if (typeof categoryId === "undefined") {
+      throw new Error("Invalid categoryId");
+    }
+    if (categoryId !== null) {
+      params.push(categoryId);
+      whereClauses.push(`category_id = $${params.length}`);
+    }
+
     if (publicOnly) {
-      whereClauses.push(`LOWER(status) = 'published'`);
-    } else if (status) {
-      params.push(status);
-      whereClauses.push(`LOWER(status) = $${params.length}`);
+      whereClauses.push("LOWER(status) = 'published'");
+      whereClauses.push("is_visible = TRUE");
+    } else {
+      if (status) {
+        params.push(status);
+        whereClauses.push(`LOWER(status) = $${params.length}`);
+      }
+
+      if (typeof filters.isVisible !== "undefined" || typeof filters.is_visible !== "undefined") {
+        params.push(normalizeBoolean(filters.isVisible ?? filters.is_visible, true));
+        whereClauses.push(`is_visible = $${params.length}`);
+      }
     }
 
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
@@ -146,11 +273,10 @@ class BulletinModel {
     const listResult = await getPool().query(
       `
       SELECT
-        id, slug, bulletin_type, title, excerpt, content, status,
-        published_at, seo, created_at, updated_at
+        ${BULLETIN_SELECT_COLUMNS}
       FROM bulletins
       ${whereSql}
-      ORDER BY published_at DESC, id DESC
+      ORDER BY sort_order ASC, published_at DESC, id DESC
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2}
       `,
@@ -177,8 +303,7 @@ class BulletinModel {
     const result = await getPool().query(
       `
       SELECT
-        id, slug, bulletin_type, title, excerpt, content, status,
-        published_at, seo, created_at, updated_at
+        ${BULLETIN_SELECT_COLUMNS}
       FROM bulletins
       WHERE id = $1
       LIMIT 1
@@ -199,14 +324,14 @@ class BulletinModel {
     const conditions = ["(id = $1 OR slug = $2)"];
 
     if (publicOnly) {
-      conditions.push(`LOWER(status) = 'published'`);
+      conditions.push("LOWER(status) = 'published'");
+      conditions.push("is_visible = TRUE");
     }
 
     const result = await getPool().query(
       `
       SELECT
-        id, slug, bulletin_type, title, excerpt, content, status,
-        published_at, seo, created_at, updated_at
+        ${BULLETIN_SELECT_COLUMNS}
       FROM bulletins
       WHERE ${conditions.join(" AND ")}
       LIMIT 1
@@ -238,28 +363,76 @@ class BulletinModel {
       throw new Error("Missing slug");
     }
 
+    const categoryId = normalizeOptionalId(payload?.categoryId ?? payload?.category_id);
+    if (typeof categoryId === "undefined") {
+      throw new Error("Invalid categoryId");
+    }
+
+    const excerpt = String(payload?.excerpt || "").trim();
+    const descriptionShort = String(payload?.descriptionShort || payload?.description_short || excerpt).trim();
+    const name = String(payload?.name || title).trim();
+
     const publishedAt = payload?.publishedAt || new Date().toISOString();
+    const seo = toSafeSeo(payload?.seo);
+    const imageUrl = toSafeString(payload?.imageUrl || payload?.image_url) || resolveImageUrlFromSeo(seo);
+
+    const titleSeo = String(payload?.titleSeo || payload?.title_seo || seo.title || title).trim();
+    const keywords = String(payload?.keywords || seo.keywords || "").trim();
+    const metaDescription = String(
+      payload?.metaDescription || payload?.meta_description || seo.description || descriptionShort || excerpt
+    ).trim();
+    const sortOrder = normalizePositiveInt(payload?.sortOrder ?? payload?.sort_order, 1);
+    const isVisible = normalizeBoolean(payload?.isVisible ?? payload?.is_visible, true);
 
     const result = await getPool().query(
       `
       INSERT INTO bulletins (
-        slug, bulletin_type, title, excerpt, content, status,
-        published_at, seo, created_at, updated_at
+        slug,
+        bulletin_type,
+        category_id,
+        title,
+        name,
+        excerpt,
+        description_short,
+        content,
+        image_url,
+        status,
+        title_seo,
+        keywords,
+        meta_description,
+        sort_order,
+        is_visible,
+        published_at,
+        seo,
+        created_at,
+        updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8::jsonb, NOW(), NOW())
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13, $14, $15,
+        $16::timestamptz, $17::jsonb, NOW(), NOW()
+      )
       RETURNING
-        id, slug, bulletin_type, title, excerpt, content, status,
-        published_at, seo, created_at, updated_at
+        ${BULLETIN_SELECT_COLUMNS}
       `,
       [
         slug,
         type,
+        categoryId,
         title,
-        String(payload?.excerpt || "").trim(),
+        name,
+        excerpt,
+        descriptionShort,
         String(payload?.content || "").trim(),
+        imageUrl,
         status,
+        titleSeo,
+        keywords,
+        metaDescription,
+        sortOrder,
+        isVisible,
         publishedAt,
-        JSON.stringify(toSafeSeo(payload?.seo)),
+        JSON.stringify(seo),
       ]
     );
 
@@ -304,14 +477,34 @@ class BulletinModel {
       throw new Error("Missing slug");
     }
 
+    const nextCategoryId =
+      typeof payload?.categoryId === "undefined" && typeof payload?.category_id === "undefined"
+        ? current.categoryId
+        : normalizeOptionalId(payload?.categoryId ?? payload?.category_id);
+    if (typeof nextCategoryId === "undefined") {
+      throw new Error("Invalid categoryId");
+    }
+
     const nextExcerpt =
       typeof payload?.excerpt === "undefined"
         ? current.excerpt
         : String(payload.excerpt || "").trim();
+    const nextDescriptionShort =
+      typeof payload?.descriptionShort === "undefined" && typeof payload?.description_short === "undefined"
+        ? current.descriptionShort
+        : String(payload?.descriptionShort || payload?.description_short || "").trim();
     const nextContent =
       typeof payload?.content === "undefined"
         ? current.content
         : String(payload.content || "").trim();
+    const nextName =
+      typeof payload?.name === "undefined"
+        ? current.name
+        : String(payload.name || "").trim();
+    const nextImageUrl =
+      typeof payload?.imageUrl === "undefined" && typeof payload?.image_url === "undefined"
+        ? current.imageUrl
+        : toSafeString(payload?.imageUrl || payload?.image_url);
     const nextPublishedAt =
       typeof payload?.publishedAt === "undefined"
         ? current.publishedAt
@@ -319,32 +512,70 @@ class BulletinModel {
     const nextSeo =
       typeof payload?.seo === "undefined" ? current.seo : toSafeSeo(payload.seo);
 
+    const nextTitleSeo =
+      typeof payload?.titleSeo === "undefined" && typeof payload?.title_seo === "undefined"
+        ? current.titleSeo
+        : String(payload?.titleSeo || payload?.title_seo || "").trim();
+    const nextKeywords =
+      typeof payload?.keywords === "undefined"
+        ? current.keywords
+        : String(payload.keywords || "").trim();
+    const nextMetaDescription =
+      typeof payload?.metaDescription === "undefined" && typeof payload?.meta_description === "undefined"
+        ? current.metaDescription
+        : String(payload?.metaDescription || payload?.meta_description || "").trim();
+    const nextSortOrder =
+      typeof payload?.sortOrder === "undefined" && typeof payload?.sort_order === "undefined"
+        ? current.sortOrder
+        : normalizePositiveInt(payload?.sortOrder ?? payload?.sort_order, current.sortOrder);
+    const nextIsVisible =
+      typeof payload?.isVisible === "undefined" && typeof payload?.is_visible === "undefined"
+        ? current.isVisible
+        : normalizeBoolean(payload?.isVisible ?? payload?.is_visible, current.isVisible);
+
     const result = await getPool().query(
       `
       UPDATE bulletins
       SET
         slug = $2,
         bulletin_type = $3,
-        title = $4,
-        excerpt = $5,
-        content = $6,
-        status = $7,
-        published_at = $8::timestamptz,
-        seo = $9::jsonb,
+        category_id = $4,
+        title = $5,
+        name = $6,
+        excerpt = $7,
+        description_short = $8,
+        content = $9,
+        image_url = $10,
+        status = $11,
+        title_seo = $12,
+        keywords = $13,
+        meta_description = $14,
+        sort_order = $15,
+        is_visible = $16,
+        published_at = $17::timestamptz,
+        seo = $18::jsonb,
         updated_at = NOW()
       WHERE id = $1
       RETURNING
-        id, slug, bulletin_type, title, excerpt, content, status,
-        published_at, seo, created_at, updated_at
+        ${BULLETIN_SELECT_COLUMNS}
       `,
       [
         Number(id),
         nextSlug,
         nextType,
+        nextCategoryId,
         nextTitle,
+        nextName,
         nextExcerpt,
+        nextDescriptionShort,
         nextContent,
+        nextImageUrl,
         nextStatus,
+        nextTitleSeo,
+        nextKeywords,
+        nextMetaDescription,
+        nextSortOrder,
+        nextIsVisible,
         nextPublishedAt,
         JSON.stringify(nextSeo),
       ]

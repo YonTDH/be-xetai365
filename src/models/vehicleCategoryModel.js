@@ -9,6 +9,13 @@ function mapRow(row) {
     description: row.description,
     parentId: row.parent_id || null,
     parentSlug: row.parent_slug || null,
+    titleSeo: row.title_seo,
+    keywords: row.keywords,
+    imageUrl: row.image_url,
+    sortOrder: row.sort_order,
+    isVisible: row.is_visible,
+    adminLevel: row.admin_level,
+    adminNote: row.admin_note,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -19,12 +26,25 @@ class VehicleCategoryModel {
     const result = await getPool().query(
       `
       SELECT
-        vc.id, vc.slug, vc.name, vc.type, vc.description,
-        vc.parent_id, pvc.slug AS parent_slug,
-        vc.created_at, vc.updated_at
+        vc.id,
+        vc.slug,
+        vc.name,
+        vc.type,
+        vc.description,
+        vc.parent_id,
+        pvc.slug AS parent_slug,
+        vc.title_seo,
+        vc.keywords,
+        vc.image_url,
+        vc.sort_order,
+        vc.is_visible,
+        vc.admin_level,
+        vc.admin_note,
+        vc.created_at,
+        vc.updated_at
       FROM vehicle_categories vc
       LEFT JOIN vehicle_categories pvc ON pvc.id = vc.parent_id
-      ORDER BY vc.id ASC
+      ORDER BY vc.sort_order ASC, vc.id ASC
       `
     );
 
@@ -87,18 +107,55 @@ class VehicleCategoryModel {
           const result = await client.query(
             `
             INSERT INTO vehicle_categories (
-              slug, name, type, description, parent_id, created_at, updated_at
+              slug,
+              name,
+              type,
+              description,
+              parent_id,
+              title_seo,
+              keywords,
+              image_url,
+              sort_order,
+              is_visible,
+              admin_level,
+              admin_note,
+              created_at,
+              updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+            VALUES (
+              $1, $2, $3, $4, $5,
+              $6, $7, $8, $9, $10, $11, $12,
+              NOW(), NOW()
+            )
             ON CONFLICT (slug) DO UPDATE SET
               name = EXCLUDED.name,
               type = EXCLUDED.type,
               description = EXCLUDED.description,
               parent_id = EXCLUDED.parent_id,
+              title_seo = EXCLUDED.title_seo,
+              keywords = EXCLUDED.keywords,
+              image_url = EXCLUDED.image_url,
+              sort_order = EXCLUDED.sort_order,
+              is_visible = EXCLUDED.is_visible,
+              admin_level = EXCLUDED.admin_level,
+              admin_note = EXCLUDED.admin_note,
               updated_at = NOW()
             RETURNING id, slug
             `,
-            [item.slug, item.name, item.type, item.description, parentId]
+            [
+              item.slug,
+              item.name,
+              item.type,
+              item.description,
+              parentId,
+              item.titleSeo,
+              item.keywords,
+              item.imageUrl,
+              item.sortOrder,
+              item.isVisible,
+              item.adminLevel,
+              item.adminNote,
+            ]
           );
 
           const id = Number(result.rows[0].id);
@@ -121,13 +178,26 @@ class VehicleCategoryModel {
       const refreshed = await client.query(
         `
         SELECT
-          vc.id, vc.slug, vc.name, vc.type, vc.description,
-          vc.parent_id, pvc.slug AS parent_slug,
-          vc.created_at, vc.updated_at
+          vc.id,
+          vc.slug,
+          vc.name,
+          vc.type,
+          vc.description,
+          vc.parent_id,
+          pvc.slug AS parent_slug,
+          vc.title_seo,
+          vc.keywords,
+          vc.image_url,
+          vc.sort_order,
+          vc.is_visible,
+          vc.admin_level,
+          vc.admin_note,
+          vc.created_at,
+          vc.updated_at
         FROM vehicle_categories vc
         LEFT JOIN vehicle_categories pvc ON pvc.id = vc.parent_id
         WHERE vc.slug = ANY($1::text[])
-        ORDER BY vc.id ASC
+        ORDER BY vc.sort_order ASC, vc.id ASC
         `,
         [createdOrUpdated]
       );

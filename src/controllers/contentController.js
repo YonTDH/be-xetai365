@@ -88,6 +88,13 @@ async function listBulletins(req, res) {
       data,
     });
   } catch (error) {
+    if (error.message.startsWith("Invalid")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -117,19 +124,26 @@ async function getBulletinDetail(req, res) {
   }
 }
 
-function getPage(req, res) {
-  const page = contentModel.findPageBySlug(req.params.slug);
-  if (!page) {
-    return res.status(404).json({
+async function getPage(req, res) {
+  try {
+    const page = await contentModel.findPageBySlug(req.params.slug);
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        message: "Page not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: page,
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
-      message: "Page not found",
+      message: error.message,
     });
   }
-
-  return res.json({
-    success: true,
-    data: page,
-  });
 }
 
 module.exports = {

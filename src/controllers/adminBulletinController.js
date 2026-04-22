@@ -12,6 +12,13 @@ async function listBulletins(req, res) {
       data,
     });
   } catch (error) {
+    if (error.message.startsWith("Invalid")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: error.message,

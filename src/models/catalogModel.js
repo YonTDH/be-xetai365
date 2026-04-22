@@ -11,13 +11,52 @@ function toIsoString(value) {
   return value;
 }
 
+function toSafeString(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim();
+}
+
+function toSafeObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value;
+}
+
+function resolveImageUrlFromImages(images) {
+  if (!Array.isArray(images) || images.length === 0) {
+    return "";
+  }
+
+  const first = images[0];
+  if (typeof first === "string") {
+    return first.trim();
+  }
+
+  if (first && typeof first === "object") {
+    return toSafeString(first.url) || toSafeString(first.src);
+  }
+
+  return "";
+}
+
 function mapVehicleRow(row) {
+  const safeSeo = toSafeObject(row.seo);
+  const imageUrl =
+    toSafeString(row.image_url) ||
+    toSafeString(safeSeo.imageUrl) ||
+    toSafeString(safeSeo.image) ||
+    resolveImageUrlFromImages(row.images);
+
   return {
     id: row.id,
     slug: row.slug,
     legacyPath: row.legacy_path,
     title: row.title,
     sku: row.sku,
+    msp: row.msp,
     brand: row.brand,
     categorySlug: row.category_slug,
     type: row.vehicle_type,
@@ -29,11 +68,17 @@ function mapVehicleRow(row) {
     priceVnd: row.price_vnd,
     status: row.status,
     isFeatured: row.is_featured,
+    isVisible: row.is_visible,
+    sortOrder: row.sort_order,
     location: row.location,
     shortDescription: row.short_description,
     content: row.content,
     images: row.images || [],
-    seo: row.seo || {},
+    imageUrl,
+    seo: safeSeo,
+    titleSeo: row.title_seo,
+    keywords: row.keywords,
+    metaDescription: row.meta_description,
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
   };
@@ -50,13 +95,34 @@ class CatalogModel {
         vc.description,
         vc.parent_id,
         pvc.slug AS parent_slug,
+        vc.title_seo,
+        vc.keywords,
+        vc.image_url,
+        vc.sort_order,
+        vc.is_visible,
+        vc.admin_level,
+        vc.admin_note,
         COUNT(v.id)::int AS product_count
       FROM vehicle_categories vc
       LEFT JOIN vehicle_categories pvc ON pvc.id = vc.parent_id
-      LEFT JOIN vehicles v ON v.category_id = vc.id
+      LEFT JOIN vehicles v ON v.category_id = vc.id AND v.is_visible = TRUE
+      WHERE vc.is_visible = TRUE
       GROUP BY
-        vc.id, vc.slug, vc.name, vc.type, vc.description, vc.parent_id, pvc.slug
-      ORDER BY vc.id ASC
+        vc.id,
+        vc.slug,
+        vc.name,
+        vc.type,
+        vc.description,
+        vc.parent_id,
+        pvc.slug,
+        vc.title_seo,
+        vc.keywords,
+        vc.image_url,
+        vc.sort_order,
+        vc.is_visible,
+        vc.admin_level,
+        vc.admin_note
+      ORDER BY vc.sort_order ASC, vc.id ASC
     `);
 
     return result.rows.map((row) => ({
@@ -67,6 +133,13 @@ class CatalogModel {
       description: row.description,
       parentId: row.parent_id || null,
       parentSlug: row.parent_slug || null,
+      titleSeo: row.title_seo,
+      keywords: row.keywords,
+      imageUrl: row.image_url,
+      sortOrder: row.sort_order,
+      isVisible: row.is_visible,
+      adminLevel: row.admin_level,
+      adminNote: row.admin_note,
       productCount: row.product_count,
     }));
   }
@@ -105,14 +178,25 @@ class CatalogModel {
     const category = normalizeText(filters.category);
     const condition = normalizeText(filters.condition);
     const featuredOnly = String(filters.featured || "").trim() === "true";
+    const includeHidden = String(filters.includeHidden || "").trim() === "true";
 
     const whereClauses = [];
     const params = [];
 
+    if (!includeHidden) {
+      whereClauses.push("v.is_visible = TRUE");
+    }
+
     if (keyword.length > 0) {
       params.push(`%${keyword}%`);
       whereClauses.push(
-        `(LOWER(v.title) LIKE $${params.length} OR LOWER(v.slug) LIKE $${params.length} OR LOWER(v.short_description) LIKE $${params.length})`
+        `(
+          LOWER(v.title) LIKE $${params.length}
+          OR LOWER(v.slug) LIKE $${params.length}
+          OR LOWER(v.short_description) LIKE $${params.length}
+          OR LOWER(v.content) LIKE $${params.length}
+          OR LOWER(v.msp) LIKE $${params.length}
+        )`
       );
     }
 
@@ -150,7 +234,7 @@ class CatalogModel {
     }
 
     if (featuredOnly) {
-      whereClauses.push(`v.is_featured = TRUE`);
+      whereClauses.push("v.is_featured = TRUE");
     }
 
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
@@ -170,15 +254,40 @@ class CatalogModel {
     const listResult = await getPool().query(
       `
       SELECT
-        v.id, v.slug, v.legacy_path, v.title, v.sku, v.brand, v.vehicle_type,
-        v.condition, v.year, v.mileage_km, v.fuel_type, v.transmission,
-        v.price_vnd, v.status, v.is_featured, v.location, v.short_description,
-        v.content, v.images, v.seo, v.created_at, v.updated_at,
+        v.id,
+        v.slug,
+        v.legacy_path,
+        v.title,
+        v.sku,
+        v.msp,
+        v.brand,
+        v.vehicle_type,
+        v.condition,
+        v.year,
+        v.mileage_km,
+        v.fuel_type,
+        v.transmission,
+        v.price_vnd,
+        v.status,
+        v.is_featured,
+        v.is_visible,
+        v.sort_order,
+        v.location,
+        v.short_description,
+        v.content,
+        v.images,
+        v.seo,
+        v.image_url,
+        v.title_seo,
+        v.keywords,
+        v.meta_description,
+        v.created_at,
+        v.updated_at,
         vc.slug AS category_slug
       FROM vehicles v
       JOIN vehicle_categories vc ON vc.id = v.category_id
       ${whereSql}
-      ORDER BY v.id DESC
+      ORDER BY v.sort_order ASC, v.id DESC
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2}
       `,
@@ -191,26 +300,56 @@ class CatalogModel {
         page: safePage,
         limit: safeLimit,
         totalItems,
-        totalPages: Math.ceil(totalItems / safeLimit),
+        totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / safeLimit),
       },
     };
   }
 
-  async findProductByIdOrSlug(value) {
+  async findProductByIdOrSlug(value, { includeHidden = false } = {}) {
     const asNumber = Number(value);
     const isNumeric = Number.isFinite(asNumber);
+
+    const conditions = ["(v.id = $1 OR v.slug = $2)"];
+    if (!includeHidden) {
+      conditions.push("v.is_visible = TRUE");
+    }
 
     const result = await getPool().query(
       `
       SELECT
-        v.id, v.slug, v.legacy_path, v.title, v.sku, v.brand, v.vehicle_type,
-        v.condition, v.year, v.mileage_km, v.fuel_type, v.transmission,
-        v.price_vnd, v.status, v.is_featured, v.location, v.short_description,
-        v.content, v.images, v.seo, v.created_at, v.updated_at,
+        v.id,
+        v.slug,
+        v.legacy_path,
+        v.title,
+        v.sku,
+        v.msp,
+        v.brand,
+        v.vehicle_type,
+        v.condition,
+        v.year,
+        v.mileage_km,
+        v.fuel_type,
+        v.transmission,
+        v.price_vnd,
+        v.status,
+        v.is_featured,
+        v.is_visible,
+        v.sort_order,
+        v.location,
+        v.short_description,
+        v.content,
+        v.images,
+        v.seo,
+        v.image_url,
+        v.title_seo,
+        v.keywords,
+        v.meta_description,
+        v.created_at,
+        v.updated_at,
         vc.slug AS category_slug
       FROM vehicles v
       JOIN vehicle_categories vc ON vc.id = v.category_id
-      WHERE (v.id = $1 OR v.slug = $2)
+      WHERE ${conditions.join(" AND ")}
       LIMIT 1
       `,
       [isNumeric ? asNumber : -1, String(value || "")]
@@ -229,15 +368,40 @@ class CatalogModel {
     const result = await getPool().query(
       `
       SELECT
-        v.id, v.slug, v.legacy_path, v.title, v.sku, v.brand, v.vehicle_type,
-        v.condition, v.year, v.mileage_km, v.fuel_type, v.transmission,
-        v.price_vnd, v.status, v.is_featured, v.location, v.short_description,
-        v.content, v.images, v.seo, v.created_at, v.updated_at,
+        v.id,
+        v.slug,
+        v.legacy_path,
+        v.title,
+        v.sku,
+        v.msp,
+        v.brand,
+        v.vehicle_type,
+        v.condition,
+        v.year,
+        v.mileage_km,
+        v.fuel_type,
+        v.transmission,
+        v.price_vnd,
+        v.status,
+        v.is_featured,
+        v.is_visible,
+        v.sort_order,
+        v.location,
+        v.short_description,
+        v.content,
+        v.images,
+        v.seo,
+        v.image_url,
+        v.title_seo,
+        v.keywords,
+        v.meta_description,
+        v.created_at,
+        v.updated_at,
         vc.slug AS category_slug
       FROM vehicles v
       JOIN vehicle_categories vc ON vc.id = v.category_id
-      WHERE v.is_featured = TRUE
-      ORDER BY v.id DESC
+      WHERE v.is_featured = TRUE AND v.is_visible = TRUE
+      ORDER BY v.sort_order ASC, v.id DESC
       LIMIT $1
       `,
       [safeLimit]

@@ -2,7 +2,13 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
-const { productCategories, products, newsArticles, legacyRoutes } = require("../data/siteData");
+const {
+  productCategories,
+  products,
+  newsArticles,
+  legacyRoutes,
+  pages,
+} = require("../data/siteData");
 
 let pool;
 
@@ -21,6 +27,51 @@ function guessBulletinType(article) {
   }
 
   return "news_event";
+}
+
+function toSafeString(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim();
+}
+
+function toSafeObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value;
+}
+
+function resolveImageUrlFromImages(images) {
+  if (!Array.isArray(images) || images.length === 0) {
+    return "";
+  }
+
+  const first = images[0];
+  if (typeof first === "string") {
+    return first.trim();
+  }
+
+  if (first && typeof first === "object") {
+    return toSafeString(first.url) || toSafeString(first.src);
+  }
+
+  return "";
+}
+
+function resolveImageUrlFromSeo(seo) {
+  const safeSeo = toSafeObject(seo);
+  return (
+    toSafeString(safeSeo.imageUrl) ||
+    toSafeString(safeSeo.image) ||
+    toSafeString(safeSeo.thumbnail) ||
+    toSafeString(safeSeo.thumbnailUrl) ||
+    toSafeString(safeSeo.coverImage) ||
+    toSafeString(safeSeo.cover_image) ||
+    toSafeString(safeSeo.ogImage) ||
+    ""
+  );
 }
 
 function getPool() {
@@ -162,8 +213,27 @@ async function ensureSeedData() {
     for (const category of productCategories) {
       await getPool().query(
         `
-        INSERT INTO vehicle_categories (id, slug, name, type, description, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        INSERT INTO vehicle_categories (
+          id,
+          slug,
+          name,
+          type,
+          description,
+          title_seo,
+          keywords,
+          image_url,
+          sort_order,
+          is_visible,
+          admin_level,
+          admin_note,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5,
+          $6, $7, $8, $9, $10, $11, $12,
+          NOW(), NOW()
+        )
         ON CONFLICT (id) DO NOTHING
         `,
         [
@@ -172,6 +242,13 @@ async function ensureSeedData() {
           category.name,
           category.type || "product-list",
           category.description || "",
+          category.titleSeo || category.seoTitle || category.name || "",
+          category.keywords || "",
+          category.imageUrl || "",
+          Number(category.sortOrder) || 1,
+          true,
+          1,
+          "",
         ]
       );
     }
@@ -188,19 +265,52 @@ async function ensureSeedData() {
     );
 
     for (const vehicle of products) {
+      const seo = vehicle.seo || {};
+      const imageUrl =
+        toSafeString(vehicle.imageUrl) ||
+        resolveImageUrlFromSeo(seo) ||
+        resolveImageUrlFromImages(vehicle.images);
+
       await getPool().query(
         `
         INSERT INTO vehicles (
-          id, category_id, slug, legacy_path, title, sku, brand, vehicle_type,
-          condition, year, mileage_km, fuel_type, transmission, price_vnd,
-          status, is_featured, location, short_description, content, images,
-          seo, created_at, updated_at
+          id,
+          category_id,
+          slug,
+          legacy_path,
+          title,
+          sku,
+          msp,
+          brand,
+          vehicle_type,
+          condition,
+          year,
+          mileage_km,
+          fuel_type,
+          transmission,
+          price_vnd,
+          status,
+          is_featured,
+          is_visible,
+          sort_order,
+          location,
+          short_description,
+          content,
+          images,
+          seo,
+          title_seo,
+          keywords,
+          meta_description,
+          image_url,
+          created_at,
+          updated_at
         )
         VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10, $11, $12, $13, $14,
-          $15, $16, $17, $18, $19, $20::jsonb,
-          $21::jsonb, $22::timestamptz, $23::timestamptz
+          $9, $10, $11, $12, $13, $14, $15,
+          $16, $17, $18, $19, $20, $21, $22,
+          $23::jsonb, $24::jsonb, $25, $26, $27, $28,
+          $29::timestamptz, $30::timestamptz
         )
         ON CONFLICT (id) DO NOTHING
         `,
@@ -211,6 +321,7 @@ async function ensureSeedData() {
           vehicle.legacyPath || "",
           vehicle.title,
           vehicle.sku || "",
+          vehicle.msp || "",
           vehicle.brand || "",
           vehicle.type || "",
           vehicle.condition || "",
@@ -221,11 +332,17 @@ async function ensureSeedData() {
           Number(vehicle.priceVnd) || 0,
           vehicle.status || "available",
           Boolean(vehicle.isFeatured),
+          true,
+          Number(vehicle.sortOrder) || 1,
           vehicle.location || "",
           vehicle.shortDescription || "",
           vehicle.content || "",
           JSON.stringify(vehicle.images || []),
-          JSON.stringify(vehicle.seo || {}),
+          JSON.stringify(seo),
+          vehicle.titleSeo || seo.title || vehicle.title || "",
+          vehicle.keywords || seo.keywords || "",
+          vehicle.metaDescription || seo.description || vehicle.shortDescription || "",
+          imageUrl,
           vehicle.createdAt || new Date().toISOString(),
           vehicle.updatedAt || new Date().toISOString(),
         ]
@@ -266,15 +383,38 @@ async function ensureSeedData() {
 
   if (bulletinCount === 0) {
     for (const article of newsArticles) {
+      const seo = article.seo || {};
+      const excerpt = article.excerpt || "";
+      const imageUrl =
+        toSafeString(article.imageUrl) || resolveImageUrlFromSeo(seo);
+
       await getPool().query(
         `
         INSERT INTO bulletins (
-          slug, bulletin_type, title, excerpt, content, status,
-          published_at, seo, created_at, updated_at
+          slug,
+          bulletin_type,
+          category_id,
+          title,
+          name,
+          excerpt,
+          description_short,
+          content,
+          status,
+          image_url,
+          title_seo,
+          keywords,
+          meta_description,
+          sort_order,
+          is_visible,
+          published_at,
+          seo,
+          created_at,
+          updated_at
         )
         VALUES (
-          $1, $2, $3, $4, $5, 'published',
-          $6::timestamptz, $7::jsonb, NOW(), NOW()
+          $1, $2, NULL, $3, $4, $5, $6, $7,
+          'published', $8, $9, $10, $11, $12, $13,
+          $14::timestamptz, $15::jsonb, NOW(), NOW()
         )
         ON CONFLICT (slug) DO NOTHING
         `,
@@ -282,10 +422,63 @@ async function ensureSeedData() {
           article.slug,
           guessBulletinType(article),
           article.title,
-          article.excerpt || "",
+          article.name || article.title,
+          excerpt,
+          article.descriptionShort || excerpt,
           article.content || "",
+          imageUrl,
+          article.titleSeo || seo.title || article.title,
+          article.keywords || seo.keywords || "",
+          article.metaDescription || seo.description || excerpt,
+          Number(article.sortOrder) || 1,
+          true,
           article.publishedAt || new Date().toISOString(),
-          JSON.stringify(article.seo || {}),
+          JSON.stringify(seo),
+        ]
+      );
+    }
+  }
+
+  const sitePageCountResult = await getPool().query(
+    "SELECT COUNT(*)::int AS total FROM site_pages"
+  );
+  const sitePageCount = sitePageCountResult.rows[0]?.total || 0;
+
+  if (sitePageCount === 0) {
+    for (const page of pages) {
+      const seo = page.seo || {};
+      await getPool().query(
+        `
+        INSERT INTO site_pages (
+          slug,
+          page_type,
+          title,
+          greeting,
+          content,
+          image_url,
+          keywords,
+          meta_description,
+          sort_order,
+          is_visible,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
+        )
+        ON CONFLICT (slug) DO NOTHING
+        `,
+        [
+          page.slug,
+          page.pageType || "company",
+          page.title || "",
+          page.greeting || "",
+          page.content || "",
+          page.imageUrl || "",
+          page.keywords || seo.keywords || "",
+          page.metaDescription || seo.description || "",
+          Number(page.sortOrder) || 1,
+          true,
         ]
       );
     }
