@@ -4,6 +4,7 @@ const { normalizeText } = require("../utils/request");
 const BULLETIN_TYPE_NAMES = {
   news_event: "Tin tuc - Su kien",
   promotion: "Khuyen mai",
+  recruitment: "Recruitment",
 };
 
 const BULLETIN_TYPE_ALIASES = {
@@ -16,6 +17,9 @@ const BULLETIN_TYPE_ALIASES = {
   promotion: "promotion",
   "khuyen-mai": "promotion",
   khuyenmai: "promotion",
+  recruitment: "recruitment",
+  "tuyen-nhan-su": "recruitment",
+  tuyennhansu: "recruitment",
 };
 
 const ALLOWED_STATUSES = new Set(["draft", "published", "archived"]);
@@ -145,6 +149,7 @@ function mapRow(row) {
     content: row.content,
     status: row.status,
     sortOrder: row.sort_order,
+    isFeatured: row.is_featured,
     isVisible: row.is_visible,
     publishedAt: toIsoString(row.published_at),
     imageUrl: directImageUrl || resolveImageUrlFromSeo(safeSeo),
@@ -173,6 +178,7 @@ const BULLETIN_SELECT_COLUMNS = `
   keywords,
   meta_description,
   sort_order,
+  is_featured,
   is_visible,
   published_at,
   seo,
@@ -259,6 +265,11 @@ class BulletinModel {
       if (typeof filters.isVisible !== "undefined" || typeof filters.is_visible !== "undefined") {
         params.push(normalizeBoolean(filters.isVisible ?? filters.is_visible, true));
         whereClauses.push(`is_visible = $${params.length}`);
+      }
+
+      if (typeof filters.isFeatured !== "undefined" || typeof filters.is_featured !== "undefined") {
+        params.push(normalizeBoolean(filters.isFeatured ?? filters.is_featured, false));
+        whereClauses.push(`is_featured = $${params.length}`);
       }
     }
 
@@ -383,6 +394,8 @@ class BulletinModel {
     ).trim();
     const sortOrder = normalizePositiveInt(payload?.sortOrder ?? payload?.sort_order, 1);
     const isVisible = normalizeBoolean(payload?.isVisible ?? payload?.is_visible, true);
+    const rawIsFeatured = normalizeBoolean(payload?.isFeatured ?? payload?.is_featured, false);
+    const isFeatured = isVisible ? rawIsFeatured : false;
 
     const result = await getPool().query(
       `
@@ -401,6 +414,7 @@ class BulletinModel {
         keywords,
         meta_description,
         sort_order,
+        is_featured,
         is_visible,
         published_at,
         seo,
@@ -409,8 +423,8 @@ class BulletinModel {
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $10, $11, $12, $13, $14, $15,
-        $16::timestamptz, $17::jsonb, NOW(), NOW()
+        $9, $10, $11, $12, $13, $14, $15, $16,
+        $17::timestamptz, $18::jsonb, NOW(), NOW()
       )
       RETURNING
         ${BULLETIN_SELECT_COLUMNS}
@@ -430,6 +444,7 @@ class BulletinModel {
         keywords,
         metaDescription,
         sortOrder,
+        isFeatured,
         isVisible,
         publishedAt,
         JSON.stringify(seo),
@@ -532,6 +547,11 @@ class BulletinModel {
       typeof payload?.isVisible === "undefined" && typeof payload?.is_visible === "undefined"
         ? current.isVisible
         : normalizeBoolean(payload?.isVisible ?? payload?.is_visible, current.isVisible);
+    const rawNextIsFeatured =
+      typeof payload?.isFeatured === "undefined" && typeof payload?.is_featured === "undefined"
+        ? current.isFeatured
+        : normalizeBoolean(payload?.isFeatured ?? payload?.is_featured, current.isFeatured);
+    const nextIsFeatured = nextIsVisible ? rawNextIsFeatured : false;
 
     const result = await getPool().query(
       `
@@ -551,9 +571,10 @@ class BulletinModel {
         keywords = $13,
         meta_description = $14,
         sort_order = $15,
-        is_visible = $16,
-        published_at = $17::timestamptz,
-        seo = $18::jsonb,
+        is_featured = $16,
+        is_visible = $17,
+        published_at = $18::timestamptz,
+        seo = $19::jsonb,
         updated_at = NOW()
       WHERE id = $1
       RETURNING
@@ -575,6 +596,7 @@ class BulletinModel {
         nextKeywords,
         nextMetaDescription,
         nextSortOrder,
+        nextIsFeatured,
         nextIsVisible,
         nextPublishedAt,
         JSON.stringify(nextSeo),

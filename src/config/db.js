@@ -2,13 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
-const {
-  productCategories,
-  products,
-  newsArticles,
-  legacyRoutes,
-  pages,
-} = require("../data/siteData");
+const { newsArticles, legacyRoutes, pages } = require("../data/siteData");
 
 let pool;
 
@@ -169,186 +163,40 @@ async function ensureSeedData() {
     )
     VALUES (
       1,
-      'Xe tải - Xe đầu kéo - Xe chuyên dụng',
-      'dongfeng, howo, hyundai, xe tải',
-      'Thông tin cấu hình website và liên hệ cho XeTải365',
-      3,
-      'XE TẢI 365 GROUP',
-      'vanducbon99@gmail.com',
+      'Xe tai - Dau keo - Xe chuyen dung',
+      'xe tai, dau keo, xe chuyen dung',
+      'Thong tin cau hinh website va lien he cho XeTai365',
+      0,
+      'XE TAI 365 GROUP',
+      'sale@xetai365.vn',
       'https://xetai365.vn',
-      '0899.966.254',
-      'Số 16, Đường Dẫn Cầu Phú Long, Bình Dương',
-      '0899.966.254',
-      '',
-      '0899.966.254',
+      '0899966254',
+      'Binh Duong, Viet Nam',
       '',
       '',
+      '0899966254',
       '',
       '',
       '',
-      'https://www.facebook.com/profile.php?id=100072217597486',
-      'https://www.youtube.com/channel/UC24fCjRcXuDH1dnbgGewb1A',
       '',
       '',
-      'http://twitter.com',
-      '',
-      'https://plus.google.com/u/0/',
-      '<button>Chat</button>',
+      'https://facebook.com/xetai365',
       '',
       '',
       '',
-      '<iframe src=''https://www.google.com/maps/embed?pb=sample''></iframe>',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
       '',
       NOW()
     )
     ON CONFLICT (id) DO NOTHING
   `);
-
-  const categoryCountResult = await getPool().query(
-    "SELECT COUNT(*)::int AS total FROM vehicle_categories"
-  );
-  const categoryCount = categoryCountResult.rows[0]?.total || 0;
-
-  if (categoryCount === 0) {
-    for (const category of productCategories) {
-      await getPool().query(
-        `
-        INSERT INTO vehicle_categories (
-          id,
-          slug,
-          name,
-          type,
-          description,
-          title_seo,
-          keywords,
-          image_url,
-          sort_order,
-          is_visible,
-          admin_level,
-          admin_note,
-          created_at,
-          updated_at
-        )
-        VALUES (
-          $1, $2, $3, $4, $5,
-          $6, $7, $8, $9, $10, $11, $12,
-          NOW(), NOW()
-        )
-        ON CONFLICT (id) DO NOTHING
-        `,
-        [
-          category.id,
-          category.slug,
-          category.name,
-          category.type || "product-list",
-          category.description || "",
-          category.titleSeo || category.seoTitle || category.name || "",
-          category.keywords || "",
-          category.imageUrl || "",
-          Number(category.sortOrder) || 1,
-          true,
-          1,
-          "",
-        ]
-      );
-    }
-  }
-
-  const vehicleCountResult = await getPool().query(
-    "SELECT COUNT(*)::int AS total FROM vehicles"
-  );
-  const vehicleCount = vehicleCountResult.rows[0]?.total || 0;
-
-  if (vehicleCount === 0) {
-    const categoryIdBySlug = new Map(
-      productCategories.map((category) => [category.slug, category.id])
-    );
-
-    for (const vehicle of products) {
-      const seo = vehicle.seo || {};
-      const imageUrl =
-        toSafeString(vehicle.imageUrl) ||
-        resolveImageUrlFromSeo(seo) ||
-        resolveImageUrlFromImages(vehicle.images);
-
-      await getPool().query(
-        `
-        INSERT INTO vehicles (
-          id,
-          category_id,
-          slug,
-          legacy_path,
-          title,
-          sku,
-          msp,
-          brand,
-          vehicle_type,
-          condition,
-          year,
-          mileage_km,
-          fuel_type,
-          transmission,
-          price_vnd,
-          status,
-          is_featured,
-          is_visible,
-          sort_order,
-          location,
-          short_description,
-          content,
-          images,
-          seo,
-          title_seo,
-          keywords,
-          meta_description,
-          image_url,
-          created_at,
-          updated_at
-        )
-        VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10, $11, $12, $13, $14, $15,
-          $16, $17, $18, $19, $20, $21, $22,
-          $23::jsonb, $24::jsonb, $25, $26, $27, $28,
-          $29::timestamptz, $30::timestamptz
-        )
-        ON CONFLICT (id) DO NOTHING
-        `,
-        [
-          vehicle.id,
-          categoryIdBySlug.get(vehicle.categorySlug),
-          vehicle.slug,
-          vehicle.legacyPath || "",
-          vehicle.title,
-          vehicle.sku || "",
-          vehicle.msp || "",
-          vehicle.brand || "",
-          vehicle.type || "",
-          vehicle.condition || "",
-          Number(vehicle.year) || 0,
-          Number(vehicle.mileageKm) || 0,
-          vehicle.fuelType || "",
-          vehicle.transmission || "",
-          Number(vehicle.priceVnd) || 0,
-          vehicle.status || "available",
-          Boolean(vehicle.isFeatured),
-          true,
-          Number(vehicle.sortOrder) || 1,
-          vehicle.location || "",
-          vehicle.shortDescription || "",
-          vehicle.content || "",
-          JSON.stringify(vehicle.images || []),
-          JSON.stringify(seo),
-          vehicle.titleSeo || seo.title || vehicle.title || "",
-          vehicle.keywords || seo.keywords || "",
-          vehicle.metaDescription || seo.description || vehicle.shortDescription || "",
-          imageUrl,
-          vehicle.createdAt || new Date().toISOString(),
-          vehicle.updatedAt || new Date().toISOString(),
-        ]
-      );
-    }
-  }
 
   const legacyRouteCountResult = await getPool().query(
     "SELECT COUNT(*)::int AS total FROM legacy_routes"
@@ -540,3 +388,5 @@ module.exports = {
   applyPendingMigrations,
   checkDatabaseHealth,
 };
+
+

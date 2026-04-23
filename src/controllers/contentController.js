@@ -7,7 +7,7 @@ async function getHome(_req, res) {
   try {
     const setting = await settingModel.get();
     const featuredProducts = await catalogModel.getFeaturedProducts(6);
-    const latestNews = (await bulletinModel.list({ page: 1, limit: 3 }, { publicOnly: true }))
+    const latestNews = (await bulletinModel.list({ type: "news_event", page: 1, limit: 3 }, { publicOnly: true }))
       .items;
 
     res.json({
@@ -43,12 +43,25 @@ async function listNewsCategories(_req, res) {
 
 async function listNews(req, res) {
   try {
-    const data = await bulletinModel.list(req.query, { publicOnly: true });
+    const data = await bulletinModel.list(
+      {
+        ...req.query,
+        type: "news_event",
+      },
+      { publicOnly: true }
+    );
     return res.json({
       success: true,
       data,
     });
   } catch (error) {
+    if (error.message.startsWith("Invalid")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -61,7 +74,7 @@ async function getNewsDetail(req, res) {
     const article = await bulletinModel.findByIdOrSlug(req.params.idOrSlug, {
       publicOnly: true,
     });
-    if (!article) {
+    if (!article || article.type !== "news_event") {
       return res.status(404).json({
         success: false,
         message: "Article not found",

@@ -1,4 +1,4 @@
-const { getPool } = require("../config/db");
+﻿const { getPool } = require("../config/db");
 const { normalizeText } = require("../utils/request");
 
 function toIsoString(value) {
@@ -42,7 +42,7 @@ function resolveImageUrlFromImages(images) {
   return "";
 }
 
-function mapVehicleRow(row) {
+function mapProductRow(row) {
   const safeSeo = toSafeObject(row.seo);
   const imageUrl =
     toSafeString(row.image_url) ||
@@ -55,8 +55,8 @@ function mapVehicleRow(row) {
     slug: row.slug,
     legacyPath: row.legacy_path,
     title: row.title,
-    sku: row.sku,
-    msp: row.msp,
+    sku: row.product_code || "",
+    msp: row.product_code || "",
     brand: row.brand,
     categorySlug: row.category_slug,
     type: row.vehicle_type,
@@ -86,46 +86,83 @@ function mapVehicleRow(row) {
 
 class CatalogModel {
   async listCategories() {
-    const result = await getPool().query(`
+    const level1Result = await getPool().query(
+      `
       SELECT
-        vc.id,
-        vc.slug,
-        vc.name,
-        vc.type,
-        vc.description,
-        vc.parent_id,
-        pvc.slug AS parent_slug,
-        vc.title_seo,
-        vc.keywords,
-        vc.image_url,
-        vc.sort_order,
-        vc.is_visible,
-        vc.admin_level,
-        vc.admin_note,
-        COUNT(v.id)::int AS product_count
-      FROM vehicle_categories vc
-      LEFT JOIN vehicle_categories pvc ON pvc.id = vc.parent_id
-      LEFT JOIN vehicles v ON v.category_id = vc.id AND v.is_visible = TRUE
-      WHERE vc.is_visible = TRUE
+        c1.id,
+        c1.slug,
+        c1.name,
+        'product-list'::varchar AS type,
+        c1.description,
+        NULL::bigint AS parent_id,
+        NULL::varchar AS parent_slug,
+        c1.title_seo,
+        c1.keywords,
+        c1.image_url,
+        c1.sort_order,
+        c1.is_visible,
+        1::smallint AS admin_level,
+        c1.admin_note,
+        COUNT(p.id)::int AS product_count
+      FROM category_level_1 c1
+      LEFT JOIN category_level_2 c2 ON c2.category_level_1_id = c1.id AND c2.is_visible = TRUE
+      LEFT JOIN products p ON p.category_level_2_id = c2.id AND p.is_visible = TRUE
+      WHERE c1.is_visible = TRUE
       GROUP BY
-        vc.id,
-        vc.slug,
-        vc.name,
-        vc.type,
-        vc.description,
-        vc.parent_id,
-        pvc.slug,
-        vc.title_seo,
-        vc.keywords,
-        vc.image_url,
-        vc.sort_order,
-        vc.is_visible,
-        vc.admin_level,
-        vc.admin_note
-      ORDER BY vc.sort_order ASC, vc.id ASC
-    `);
+        c1.id,
+        c1.slug,
+        c1.name,
+        c1.description,
+        c1.title_seo,
+        c1.keywords,
+        c1.image_url,
+        c1.sort_order,
+        c1.is_visible,
+        c1.admin_note
+      ORDER BY c1.sort_order ASC, c1.id ASC
+      `
+    );
 
-    return result.rows.map((row) => ({
+    const level2Result = await getPool().query(
+      `
+      SELECT
+        c2.id,
+        c2.slug,
+        c2.name,
+        'product-list'::varchar AS type,
+        c2.description,
+        c2.category_level_1_id AS parent_id,
+        c1.slug AS parent_slug,
+        c2.title_seo,
+        c2.keywords,
+        c2.image_url,
+        c2.sort_order,
+        c2.is_visible,
+        2::smallint AS admin_level,
+        c2.admin_note,
+        COUNT(p.id)::int AS product_count
+      FROM category_level_2 c2
+      JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
+      LEFT JOIN products p ON p.category_level_2_id = c2.id AND p.is_visible = TRUE
+      WHERE c2.is_visible = TRUE AND c1.is_visible = TRUE
+      GROUP BY
+        c2.id,
+        c2.slug,
+        c2.name,
+        c2.description,
+        c2.category_level_1_id,
+        c1.slug,
+        c2.title_seo,
+        c2.keywords,
+        c2.image_url,
+        c2.sort_order,
+        c2.is_visible,
+        c2.admin_note
+      ORDER BY c2.sort_order ASC, c2.id ASC
+      `
+    );
+
+    return [...level1Result.rows, ...level2Result.rows].map((row) => ({
       id: row.id,
       slug: row.slug,
       name: row.name,
@@ -145,26 +182,84 @@ class CatalogModel {
   }
 
   async listCategoriesTree() {
-    const categories = await this.listCategories();
-    const byId = new Map();
-    const roots = [];
+    const level1Result = await getPool().query(
+      `
+      SELECT
+        id, slug, name, description, title_seo, keywords,
+        image_url, sort_order, is_visible, admin_note
+      FROM category_level_1
+      WHERE is_visible = TRUE
+      ORDER BY sort_order ASC, id ASC
+      `
+    );
 
-    for (const category of categories) {
-      byId.set(category.id, {
-        ...category,
+    const level2Result = await getPool().query(
+      `
+      SELECT
+        c2.id,
+        c2.slug,
+        c2.name,
+        c2.description,
+        c2.category_level_1_id,
+        c2.title_seo,
+        c2.keywords,
+        c2.image_url,
+        c2.sort_order,
+        c2.is_visible,
+        c2.admin_note
+      FROM category_level_2 c2
+      JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
+      WHERE c2.is_visible = TRUE AND c1.is_visible = TRUE
+      ORDER BY c2.sort_order ASC, c2.id ASC
+      `
+    );
+
+    const byLevel1Id = new Map();
+    for (const row of level1Result.rows) {
+      byLevel1Id.set(row.id, {
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        type: "product-list",
+        description: row.description,
+        parentId: null,
+        parentSlug: null,
+        titleSeo: row.title_seo,
+        keywords: row.keywords,
+        imageUrl: row.image_url,
+        sortOrder: row.sort_order,
+        isVisible: row.is_visible,
+        adminLevel: 1,
+        adminNote: row.admin_note,
         children: [],
       });
     }
 
-    for (const category of byId.values()) {
-      if (category.parentId && byId.has(category.parentId)) {
-        byId.get(category.parentId).children.push(category);
-      } else {
-        roots.push(category);
+    for (const row of level2Result.rows) {
+      if (!byLevel1Id.has(row.category_level_1_id)) {
+        continue;
       }
+
+      byLevel1Id.get(row.category_level_1_id).children.push({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        type: "product-list",
+        description: row.description,
+        parentId: row.category_level_1_id,
+        parentSlug: byLevel1Id.get(row.category_level_1_id).slug,
+        titleSeo: row.title_seo,
+        keywords: row.keywords,
+        imageUrl: row.image_url,
+        sortOrder: row.sort_order,
+        isVisible: row.is_visible,
+        adminLevel: 2,
+        adminNote: row.admin_note,
+        children: [],
+      });
     }
 
-    return roots;
+    return Array.from(byLevel1Id.values());
   }
 
   async listProducts(filters = {}) {
@@ -184,57 +279,46 @@ class CatalogModel {
     const params = [];
 
     if (!includeHidden) {
-      whereClauses.push("v.is_visible = TRUE");
+      whereClauses.push("p.is_visible = TRUE");
+      whereClauses.push("c2.is_visible = TRUE");
+      whereClauses.push("c1.is_visible = TRUE");
     }
 
     if (keyword.length > 0) {
       params.push(`%${keyword}%`);
       whereClauses.push(
         `(
-          LOWER(v.title) LIKE $${params.length}
-          OR LOWER(v.slug) LIKE $${params.length}
-          OR LOWER(v.short_description) LIKE $${params.length}
-          OR LOWER(v.content) LIKE $${params.length}
-          OR LOWER(v.msp) LIKE $${params.length}
+          LOWER(p.title) LIKE $${params.length}
+          OR LOWER(p.slug) LIKE $${params.length}
+          OR LOWER(p.short_description) LIKE $${params.length}
+          OR LOWER(p.content) LIKE $${params.length}
+          OR LOWER(p.product_code) LIKE $${params.length}
         )`
       );
     }
 
     if (brand.length > 0) {
       params.push(brand);
-      whereClauses.push(`LOWER(v.brand) = $${params.length}`);
+      whereClauses.push(`LOWER(p.brand) = $${params.length}`);
     }
 
     if (status.length > 0) {
       params.push(status);
-      whereClauses.push(`LOWER(v.status) = $${params.length}`);
+      whereClauses.push(`LOWER(p.status::text) = $${params.length}`);
     }
 
     if (category.length > 0) {
       params.push(category);
-      whereClauses.push(`
-        v.category_id IN (
-          WITH RECURSIVE category_tree AS (
-            SELECT id
-            FROM vehicle_categories
-            WHERE LOWER(slug) = $${params.length}
-            UNION ALL
-            SELECT vc2.id
-            FROM vehicle_categories vc2
-            JOIN category_tree ct ON vc2.parent_id = ct.id
-          )
-          SELECT id FROM category_tree
-        )
-      `);
+      whereClauses.push(`(LOWER(c2.slug) = $${params.length} OR LOWER(c1.slug) = $${params.length})`);
     }
 
     if (condition.length > 0) {
       params.push(condition);
-      whereClauses.push(`LOWER(v.condition) = $${params.length}`);
+      whereClauses.push(`LOWER(p.condition) = $${params.length}`);
     }
 
     if (featuredOnly) {
-      whereClauses.push("v.is_featured = TRUE");
+      whereClauses.push("p.is_featured = TRUE");
     }
 
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
@@ -242,8 +326,9 @@ class CatalogModel {
     const countResult = await getPool().query(
       `
       SELECT COUNT(*)::int AS total
-      FROM vehicles v
-      JOIN vehicle_categories vc ON vc.id = v.category_id
+      FROM products p
+      JOIN category_level_2 c2 ON c2.id = p.category_level_2_id
+      JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
       ${whereSql}
       `,
       params
@@ -254,40 +339,40 @@ class CatalogModel {
     const listResult = await getPool().query(
       `
       SELECT
-        v.id,
-        v.slug,
-        v.legacy_path,
-        v.title,
-        v.sku,
-        v.msp,
-        v.brand,
-        v.vehicle_type,
-        v.condition,
-        v.year,
-        v.mileage_km,
-        v.fuel_type,
-        v.transmission,
-        v.price_vnd,
-        v.status,
-        v.is_featured,
-        v.is_visible,
-        v.sort_order,
-        v.location,
-        v.short_description,
-        v.content,
-        v.images,
-        v.seo,
-        v.image_url,
-        v.title_seo,
-        v.keywords,
-        v.meta_description,
-        v.created_at,
-        v.updated_at,
-        vc.slug AS category_slug
-      FROM vehicles v
-      JOIN vehicle_categories vc ON vc.id = v.category_id
+        p.id,
+        p.slug,
+        p.legacy_path,
+        p.title,
+        p.product_code,
+        p.brand,
+        p.vehicle_type,
+        p.condition,
+        p.year,
+        p.mileage_km,
+        p.fuel_type,
+        p.transmission,
+        p.price_vnd,
+        p.status,
+        p.is_featured,
+        p.is_visible,
+        p.sort_order,
+        p.location,
+        p.short_description,
+        p.content,
+        p.images,
+        p.seo,
+        p.image_url,
+        p.title_seo,
+        p.keywords,
+        p.meta_description,
+        p.created_at,
+        p.updated_at,
+        c2.slug AS category_slug
+      FROM products p
+      JOIN category_level_2 c2 ON c2.id = p.category_level_2_id
+      JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
       ${whereSql}
-      ORDER BY v.sort_order ASC, v.id DESC
+      ORDER BY p.sort_order ASC, p.id DESC
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2}
       `,
@@ -295,7 +380,7 @@ class CatalogModel {
     );
 
     return {
-      items: listResult.rows.map(mapVehicleRow),
+      items: listResult.rows.map(mapProductRow),
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -309,46 +394,48 @@ class CatalogModel {
     const asNumber = Number(value);
     const isNumeric = Number.isFinite(asNumber);
 
-    const conditions = ["(v.id = $1 OR v.slug = $2)"];
+    const conditions = ["(p.id = $1 OR p.slug = $2)"];
     if (!includeHidden) {
-      conditions.push("v.is_visible = TRUE");
+      conditions.push("p.is_visible = TRUE");
+      conditions.push("c2.is_visible = TRUE");
+      conditions.push("c1.is_visible = TRUE");
     }
 
     const result = await getPool().query(
       `
       SELECT
-        v.id,
-        v.slug,
-        v.legacy_path,
-        v.title,
-        v.sku,
-        v.msp,
-        v.brand,
-        v.vehicle_type,
-        v.condition,
-        v.year,
-        v.mileage_km,
-        v.fuel_type,
-        v.transmission,
-        v.price_vnd,
-        v.status,
-        v.is_featured,
-        v.is_visible,
-        v.sort_order,
-        v.location,
-        v.short_description,
-        v.content,
-        v.images,
-        v.seo,
-        v.image_url,
-        v.title_seo,
-        v.keywords,
-        v.meta_description,
-        v.created_at,
-        v.updated_at,
-        vc.slug AS category_slug
-      FROM vehicles v
-      JOIN vehicle_categories vc ON vc.id = v.category_id
+        p.id,
+        p.slug,
+        p.legacy_path,
+        p.title,
+        p.product_code,
+        p.brand,
+        p.vehicle_type,
+        p.condition,
+        p.year,
+        p.mileage_km,
+        p.fuel_type,
+        p.transmission,
+        p.price_vnd,
+        p.status,
+        p.is_featured,
+        p.is_visible,
+        p.sort_order,
+        p.location,
+        p.short_description,
+        p.content,
+        p.images,
+        p.seo,
+        p.image_url,
+        p.title_seo,
+        p.keywords,
+        p.meta_description,
+        p.created_at,
+        p.updated_at,
+        c2.slug AS category_slug
+      FROM products p
+      JOIN category_level_2 c2 ON c2.id = p.category_level_2_id
+      JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
       WHERE ${conditions.join(" AND ")}
       LIMIT 1
       `,
@@ -359,7 +446,7 @@ class CatalogModel {
       return null;
     }
 
-    return mapVehicleRow(result.rows[0]);
+    return mapProductRow(result.rows[0]);
   }
 
   async getFeaturedProducts(limit = 6) {
@@ -368,46 +455,49 @@ class CatalogModel {
     const result = await getPool().query(
       `
       SELECT
-        v.id,
-        v.slug,
-        v.legacy_path,
-        v.title,
-        v.sku,
-        v.msp,
-        v.brand,
-        v.vehicle_type,
-        v.condition,
-        v.year,
-        v.mileage_km,
-        v.fuel_type,
-        v.transmission,
-        v.price_vnd,
-        v.status,
-        v.is_featured,
-        v.is_visible,
-        v.sort_order,
-        v.location,
-        v.short_description,
-        v.content,
-        v.images,
-        v.seo,
-        v.image_url,
-        v.title_seo,
-        v.keywords,
-        v.meta_description,
-        v.created_at,
-        v.updated_at,
-        vc.slug AS category_slug
-      FROM vehicles v
-      JOIN vehicle_categories vc ON vc.id = v.category_id
-      WHERE v.is_featured = TRUE AND v.is_visible = TRUE
-      ORDER BY v.sort_order ASC, v.id DESC
+        p.id,
+        p.slug,
+        p.legacy_path,
+        p.title,
+        p.product_code,
+        p.brand,
+        p.vehicle_type,
+        p.condition,
+        p.year,
+        p.mileage_km,
+        p.fuel_type,
+        p.transmission,
+        p.price_vnd,
+        p.status,
+        p.is_featured,
+        p.is_visible,
+        p.sort_order,
+        p.location,
+        p.short_description,
+        p.content,
+        p.images,
+        p.seo,
+        p.image_url,
+        p.title_seo,
+        p.keywords,
+        p.meta_description,
+        p.created_at,
+        p.updated_at,
+        c2.slug AS category_slug
+      FROM products p
+      JOIN category_level_2 c2 ON c2.id = p.category_level_2_id
+      JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
+      WHERE p.is_featured = TRUE
+        AND p.is_visible = TRUE
+        AND c2.is_visible = TRUE
+        AND c1.is_visible = TRUE
+      ORDER BY p.sort_order ASC, p.id DESC
       LIMIT $1
       `,
       [safeLimit]
     );
 
-    return result.rows.map(mapVehicleRow);
+    return result.rows.map(mapProductRow);
   }
 }
 
