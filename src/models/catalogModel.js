@@ -59,6 +59,7 @@ function mapProductRow(row) {
     msp: row.product_code || "",
     brand: row.brand,
     categorySlug: row.category_slug,
+    categoryName: row.category_name || "",
     type: row.vehicle_type,
     condition: row.condition,
     year: row.year,
@@ -367,7 +368,8 @@ class CatalogModel {
         p.meta_description,
         p.created_at,
         p.updated_at,
-        c2.slug AS category_slug
+        c2.slug AS category_slug,
+        c2.name AS category_name
       FROM products p
       JOIN category_level_2 c2 ON c2.id = p.category_level_2_id
       JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
@@ -432,7 +434,8 @@ class CatalogModel {
         p.meta_description,
         p.created_at,
         p.updated_at,
-        c2.slug AS category_slug
+        c2.slug AS category_slug,
+        c2.name AS category_name
       FROM products p
       JOIN category_level_2 c2 ON c2.id = p.category_level_2_id
       JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
@@ -483,7 +486,8 @@ class CatalogModel {
         p.meta_description,
         p.created_at,
         p.updated_at,
-        c2.slug AS category_slug
+        c2.slug AS category_slug,
+        c2.name AS category_name
       FROM products p
       JOIN category_level_2 c2 ON c2.id = p.category_level_2_id
       JOIN category_level_1 c1 ON c1.id = c2.category_level_1_id
