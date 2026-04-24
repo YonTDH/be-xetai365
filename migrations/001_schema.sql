@@ -230,6 +230,17 @@ ALTER TABLE products
   ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 1,
   ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT TRUE;
 
+UPDATE products
+SET images = CASE
+  WHEN images IS NULL THEN '[]'::jsonb
+  WHEN jsonb_typeof(images) = 'array' THEN images
+  WHEN jsonb_typeof(images) = 'string' THEN jsonb_build_array(images)
+  WHEN jsonb_typeof(images) = 'object' AND COALESCE(images->>'url', '') <> '' THEN jsonb_build_array(images)
+  WHEN jsonb_typeof(images) = 'object' AND COALESCE(images->>'src', '') <> '' THEN jsonb_build_array(images)
+  ELSE '[]'::jsonb
+END
+WHERE images IS NULL OR jsonb_typeof(images) <> 'array';
+
 -- Normalize constraints for bulletin type and featured/visible behavior
 ALTER TABLE bulletins
   DROP CONSTRAINT IF EXISTS bulletins_bulletin_type_check,
@@ -243,9 +254,12 @@ ALTER TABLE bulletins
     CHECK (is_visible OR NOT is_featured);
 
 ALTER TABLE products
+  DROP CONSTRAINT IF EXISTS ck_products_images_is_array,
   DROP CONSTRAINT IF EXISTS ck_products_featured_visible;
 
 ALTER TABLE products
+  ADD CONSTRAINT ck_products_images_is_array
+    CHECK (jsonb_typeof(images) = 'array'),
   ADD CONSTRAINT ck_products_featured_visible
     CHECK (is_visible OR NOT is_featured);
 

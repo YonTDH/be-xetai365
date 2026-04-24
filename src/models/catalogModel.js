@@ -25,6 +25,24 @@ function toSafeObject(value) {
   return value;
 }
 
+function toSafeImages(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item) => {
+    if (typeof item === "string") {
+      return item.trim().length > 0;
+    }
+
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    return toSafeString(item.url) || toSafeString(item.src);
+  });
+}
+
 function resolveImageUrlFromImages(images) {
   if (!Array.isArray(images) || images.length === 0) {
     return "";
@@ -44,11 +62,12 @@ function resolveImageUrlFromImages(images) {
 
 function mapProductRow(row) {
   const safeSeo = toSafeObject(row.seo);
+  const safeImages = toSafeImages(row.images);
   const imageUrl =
     toSafeString(row.image_url) ||
     toSafeString(safeSeo.imageUrl) ||
     toSafeString(safeSeo.image) ||
-    resolveImageUrlFromImages(row.images);
+    resolveImageUrlFromImages(safeImages);
 
   return {
     id: row.id,
@@ -74,7 +93,7 @@ function mapProductRow(row) {
     location: row.location,
     shortDescription: row.short_description,
     content: row.content,
-    images: row.images || [],
+    images: safeImages,
     imageUrl,
     seo: safeSeo,
     titleSeo: row.title_seo,
