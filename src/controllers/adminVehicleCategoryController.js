@@ -186,10 +186,78 @@ async function deleteLevel1VehicleCategory(req, res) {
   }
 }
 
+async function updateLevel2VehicleCategory(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category id",
+      });
+    }
+
+    const normalized = normalizeInputItem({
+      ...req.body,
+      adminLevel: 2,
+    });
+
+    const errorMessage = validateItem(normalized);
+    if (errorMessage) {
+      return res.status(400).json({
+        success: false,
+        message: errorMessage,
+      });
+    }
+
+    const data = await vehicleCategoryModel.updateLevel2(id, normalized);
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    const statusCode = error.message === "Category level 2 not found" ? 404 : 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function deleteLevel2VehicleCategory(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category id",
+      });
+    }
+
+    const data = await vehicleCategoryModel.deleteLevel2(id);
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    const statusCode =
+      error.message === "Category level 2 not found"
+        ? 404
+        : error.code === "CATEGORY_LEVEL_2_HAS_VISIBLE_PRODUCTS"
+          ? 409
+          : 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   listVehicleCategories,
   listVehicleCategoriesTree,
   upsertVehicleCategories,
   updateLevel1VehicleCategory,
   deleteLevel1VehicleCategory,
+  updateLevel2VehicleCategory,
+  deleteLevel2VehicleCategory,
 };
