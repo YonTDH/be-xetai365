@@ -76,6 +76,21 @@ async function listVehicleCategories(_req, res) {
   }
 }
 
+async function listVehicleCategoriesTree(_req, res) {
+  try {
+    const data = await vehicleCategoryModel.listTree();
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 async function upsertVehicleCategories(req, res) {
   try {
     const payload = req.body;
@@ -105,7 +120,46 @@ async function upsertVehicleCategories(req, res) {
   }
 }
 
+async function updateLevel1VehicleCategory(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category id",
+      });
+    }
+
+    const normalized = normalizeInputItem({
+      ...req.body,
+      adminLevel: 1,
+    });
+
+    const errorMessage = validateItem(normalized);
+    if (errorMessage) {
+      return res.status(400).json({
+        success: false,
+        message: errorMessage,
+      });
+    }
+
+    const data = await vehicleCategoryModel.updateLevel1(id, normalized);
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    const statusCode = error.message === "Category level 1 not found" ? 404 : 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   listVehicleCategories,
+  listVehicleCategoriesTree,
   upsertVehicleCategories,
+  updateLevel1VehicleCategory,
 };

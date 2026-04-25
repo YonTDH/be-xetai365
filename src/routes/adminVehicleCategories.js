@@ -4,7 +4,9 @@ const adminVehicleCategoryController = require("../controllers/adminVehicleCateg
 
 const router = express.Router();
 
-router.get("/", adminVehicleCategoryController.listVehicleCategories);
+router.get("/", requireAdminAuth, adminVehicleCategoryController.listVehicleCategories);
+router.get("/tree", requireAdminAuth, adminVehicleCategoryController.listVehicleCategoriesTree);
 router.post("/", requireAdminAuth, adminVehicleCategoryController.upsertVehicleCategories);
+router.put("/level-1/:id", requireAdminAuth, adminVehicleCategoryController.updateLevel1VehicleCategory);
 
 module.exports = router;

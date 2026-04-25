@@ -231,6 +231,135 @@ class VehicleCategoryModel {
     }
   }
 
+  async getLevel1ById(id, client = getPool()) {
+    const result = await client.query(
+      `
+      SELECT
+        id,
+        slug,
+        name,
+        description,
+        title_seo,
+        keywords,
+        image_url,
+        sort_order,
+        is_visible,
+        admin_note,
+        created_at,
+        updated_at
+      FROM category_level_1
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return null;
+    }
+
+    return mapLevel1Row(result.rows[0]);
+  }
+
+  async updateLevel1(id, payload) {
+    const client = await getPool().connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const current = await this.getLevel1ById(id, client);
+      if (!current) {
+        throw new Error("Category level 1 not found");
+      }
+
+      const nextData = {
+        slug: String(payload?.slug || current.slug).trim().toLowerCase(),
+        name: String(payload?.name || current.name).trim(),
+        description: typeof payload?.description === "undefined" ? current.description : String(payload.description || "").trim(),
+        titleSeo: typeof payload?.titleSeo === "undefined" && typeof payload?.title_seo === "undefined"
+          ? current.titleSeo
+          : String(payload?.titleSeo || payload?.title_seo || "").trim(),
+        keywords: typeof payload?.keywords === "undefined" ? current.keywords : String(payload.keywords || "").trim(),
+        imageUrl: typeof payload?.imageUrl === "undefined" && typeof payload?.image_url === "undefined"
+          ? current.imageUrl
+          : String(payload?.imageUrl || payload?.image_url || "").trim(),
+        sortOrder: typeof payload?.sortOrder === "undefined" && typeof payload?.sort_order === "undefined"
+          ? current.sortOrder
+          : Number(payload?.sortOrder ?? payload?.sort_order),
+        isVisible:
+          typeof payload?.isVisible === "undefined" && typeof payload?.is_visible === "undefined"
+            ? current.isVisible
+            : Boolean(payload?.isVisible ?? payload?.is_visible),
+        adminNote: typeof payload?.adminNote === "undefined" && typeof payload?.admin_note === "undefined"
+          ? current.adminNote
+          : String(payload?.adminNote || payload?.admin_note || "").trim(),
+      };
+
+      if (!nextData.slug) {
+        throw new Error("Missing slug");
+      }
+
+      if (!nextData.name) {
+        throw new Error("Missing name");
+      }
+
+      if (!Number.isInteger(nextData.sortOrder) || nextData.sortOrder < 1) {
+        throw new Error("Invalid sortOrder");
+      }
+
+      const result = await client.query(
+        `
+        UPDATE category_level_1
+        SET
+          slug = $2,
+          name = $3,
+          description = $4,
+          title_seo = $5,
+          keywords = $6,
+          image_url = $7,
+          sort_order = $8,
+          is_visible = $9,
+          admin_note = $10,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+          id,
+          slug,
+          name,
+          description,
+          title_seo,
+          keywords,
+          image_url,
+          sort_order,
+          is_visible,
+          admin_note,
+          created_at,
+          updated_at
+        `,
+        [
+          id,
+          nextData.slug,
+          nextData.name,
+          nextData.description,
+          nextData.titleSeo,
+          nextData.keywords,
+          nextData.imageUrl,
+          nextData.sortOrder,
+          nextData.isVisible,
+          nextData.adminNote,
+        ]
+      );
+
+      await client.query("COMMIT");
+      return mapLevel1Row(result.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async listTree() {
     const level1Result = await getPool().query(
       `
