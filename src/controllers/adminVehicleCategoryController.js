@@ -157,9 +157,39 @@ async function updateLevel1VehicleCategory(req, res) {
   }
 }
 
+async function deleteLevel1VehicleCategory(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category id",
+      });
+    }
+
+    const data = await vehicleCategoryModel.deleteLevel1(id);
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    const statusCode =
+      error.message === "Category level 1 not found"
+        ? 404
+        : error.code === "CATEGORY_LEVEL_1_HAS_VISIBLE_CHILDREN"
+          ? 409
+          : 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   listVehicleCategories,
   listVehicleCategoriesTree,
   upsertVehicleCategories,
   updateLevel1VehicleCategory,
+  deleteLevel1VehicleCategory,
 };

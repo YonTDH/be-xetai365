@@ -360,6 +360,42 @@ class VehicleCategoryModel {
     }
   }
 
+  async deleteLevel1(id) {
+    const visibleChildrenResult = await getPool().query(
+      `
+      SELECT COUNT(*)::int AS total
+      FROM category_level_2
+      WHERE category_level_1_id = $1 AND is_visible = TRUE
+      `,
+      [id]
+    );
+
+    const visibleChildrenCount = Number(visibleChildrenResult.rows[0]?.total || 0);
+    if (visibleChildrenCount > 0) {
+      const error = new Error("Không thể xóa danh mục cấp 1 khi vẫn còn danh mục cấp 2 đang hiển thị.");
+      error.code = "CATEGORY_LEVEL_1_HAS_VISIBLE_CHILDREN";
+      throw error;
+    }
+
+    const result = await getPool().query(
+      `
+      DELETE FROM category_level_1
+      WHERE id = $1
+      RETURNING id, name
+      `,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      throw new Error("Category level 1 not found");
+    }
+
+    return {
+      id: Number(result.rows[0].id),
+      name: result.rows[0].name,
+    };
+  }
+
   async listTree() {
     const level1Result = await getPool().query(
       `
