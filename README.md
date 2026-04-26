@@ -59,7 +59,7 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 - ket noi PostgreSQL;
 - kiem tra va apply migration chua chay;
 - bo qua migration da ton tai;
-- seed du lieu mac dinh cho `settings`, `vehicle_categories`, `vehicles` neu bang rong.
+- seed du lieu mac dinh cho `settings`, `bulletins`, `site_pages`, `legacy_routes`, `products`, `admin_users` neu bang rong.
 
 ## Cau truc chinh
 

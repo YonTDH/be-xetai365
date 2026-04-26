@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
-const { newsArticles, legacyRoutes, pages } = require("../data/siteData");
+const { newsArticles, legacyRoutes, pages, products: seedProducts } = require("../data/siteData");
 
 let pool;
 
@@ -66,6 +66,20 @@ function resolveImageUrlFromSeo(seo) {
     toSafeString(safeSeo.ogImage) ||
     ""
   );
+}
+
+function mapSeedCategorySlug(categorySlug) {
+  const normalizedSlug = toSafeString(categorySlug).toLowerCase();
+
+  if (normalizedSlug === "xe-dau-keo") {
+    return "tong-hop-xe-dau-keo";
+  }
+
+  if (normalizedSlug === "xe-chuyen-dung") {
+    return "tong-hop-xe-chuyen-dung";
+  }
+
+  return "tong-hop-xe-tai";
 }
 
 function getPool() {
@@ -336,6 +350,121 @@ async function ensureSeedData() {
           page.metaDescription || seo.description || "",
           Number(page.sortOrder) || 1,
           true,
+        ]
+      );
+    }
+  }
+
+  const productCountResult = await getPool().query(
+    "SELECT COUNT(*)::int AS total FROM products"
+  );
+  const productCount = productCountResult.rows[0]?.total || 0;
+
+  if (productCount === 0) {
+    const categorySlugSet = Array.from(
+      new Set(seedProducts.map((product) => mapSeedCategorySlug(product.categorySlug)))
+    );
+    const categoryRowsResult = await getPool().query(
+      `
+      SELECT id, slug
+      FROM category_level_2
+      WHERE slug = ANY($1::text[])
+      `,
+      [categorySlugSet]
+    );
+    const categoryIdBySlug = new Map(
+      categoryRowsResult.rows.map((row) => [row.slug, row.id])
+    );
+
+    for (let index = 0; index < seedProducts.length; index += 1) {
+      const product = seedProducts[index];
+      const categoryLevel2Slug = mapSeedCategorySlug(product.categorySlug);
+      const categoryLevel2Id = categoryIdBySlug.get(categoryLevel2Slug);
+
+      if (!categoryLevel2Id) {
+        continue;
+      }
+
+      const seo = toSafeObject(product.seo);
+      const imageUrl =
+        toSafeString(product.imageUrl) ||
+        resolveImageUrlFromImages(product.images) ||
+        resolveImageUrlFromSeo(seo);
+      const images = Array.isArray(product.images)
+        ? product.images.filter((item) => typeof item === "string" && item.trim())
+        : [];
+
+      await getPool().query(
+        `
+        INSERT INTO products (
+          category_level_2_id,
+          product_code,
+          slug,
+          legacy_path,
+          title,
+          short_description,
+          content,
+          technical_specs,
+          price_vnd,
+          unit,
+          status,
+          brand,
+          vehicle_type,
+          condition,
+          year,
+          mileage_km,
+          fuel_type,
+          transmission,
+          location,
+          images,
+          seo,
+          title_seo,
+          keywords,
+          meta_description,
+          image_url,
+          is_featured,
+          is_visible,
+          sort_order,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, '{}'::jsonb, $8, 'unit', $9, $10, $11, $12,
+          $13, $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20, $21, $22, $23, $24,
+          TRUE, $25, $26::timestamptz, $27::timestamptz
+        )
+        ON CONFLICT (slug) DO NOTHING
+        `,
+        [
+          categoryLevel2Id,
+          toSafeString(product.sku),
+          toSafeString(product.slug),
+          toSafeString(product.legacyPath),
+          toSafeString(product.title),
+          toSafeString(product.shortDescription),
+          toSafeString(product.content),
+          Number(product.priceVnd) || 0,
+          toSafeString(product.status) || "available",
+          toSafeString(product.brand),
+          toSafeString(product.type),
+          toSafeString(product.condition),
+          Number(product.year) || 0,
+          Number(product.mileageKm) || 0,
+          toSafeString(product.fuelType),
+          toSafeString(product.transmission),
+          toSafeString(product.location),
+          JSON.stringify(images),
+          JSON.stringify(seo),
+          toSafeString(product.titleSeo) || toSafeString(seo.title) || toSafeString(product.title),
+          toSafeString(product.keywords) || toSafeString(seo.keywords),
+          toSafeString(product.metaDescription) ||
+            toSafeString(seo.description) ||
+            toSafeString(product.shortDescription),
+          imageUrl,
+          Boolean(product.isFeatured),
+          index + 1,
+          product.createdAt || new Date().toISOString(),
+          product.updatedAt || new Date().toISOString(),
         ]
       );
     }
