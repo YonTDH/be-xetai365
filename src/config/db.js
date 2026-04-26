@@ -74,6 +74,15 @@ function getPool() {
   }
 
   const useSsl = toBoolean(process.env.POSTGRES_SSL, false);
+  const connectionString = String(process.env.DATABASE_URL || "").trim();
+
+  if (connectionString) {
+    pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+    });
+    return pool;
+  }
 
   pool = new Pool({
     host: process.env.POSTGRES_HOST || "127.0.0.1",

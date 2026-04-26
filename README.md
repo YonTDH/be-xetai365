@@ -29,6 +29,7 @@ Tao file `.env` tu `.env.example`:
 PORT=3000
 CLIENT_URL=http://localhost:5173
 API_PREFIX=/api
+DATABASE_URL=
 POSTGRES_HOST=127.0.0.1
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
@@ -41,6 +42,8 @@ ADMIN_FULL_NAME=System Admin
 JWT_SECRET=change-this-jwt-secret
 JWT_EXPIRES_IN=8h
 ```
+
+`DATABASE_URL` uu tien cao hon `POSTGRES_*`. Khi deploy Render, co the paste thang Internal/External Database URL vao bien nay.
 
 ## Migration PostgreSQL
 
