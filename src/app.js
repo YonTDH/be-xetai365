@@ -15,11 +15,37 @@ const legacyRoutesRouter = require("./routes/legacyRoutes");
 
 const app = express();
 
-const corsOrigin = process.env.CLIENT_URL || "*";
+function getAllowedOrigins() {
+  const rawOrigins = [
+    process.env.CLIENT_URL,
+    process.env.CLIENT_URLS,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (!rawOrigins.length) {
+    return ["*"];
+  }
+
+  return Array.from(new Set(rawOrigins));
+}
+
+const allowedOrigins = getAllowedOrigins();
 
 app.use(
   cors({
-    origin: corsOrigin,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
   })
 );
 app.use(express.json());
