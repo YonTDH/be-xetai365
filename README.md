@@ -41,6 +41,11 @@ ADMIN_PASSWORD=admin123
 ADMIN_FULL_NAME=System Admin
 JWT_SECRET=change-this-jwt-secret
 JWT_EXPIRES_IN=8h
+CLOUDINARY_CLOUD_NAME=dn7gvdedx
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=
+CLOUDINARY_FOLDER=xetai365
+CLOUDINARY_UPLOAD_PRESET=xetai365_admin
 ```
 
 `DATABASE_URL` uu tien cao hon `POSTGRES_*`. Khi deploy Render, co the paste thang Internal/External Database URL vao bien nay.
@@ -85,6 +90,7 @@ Khi khoi dong app (`npm run dev` / `npm start`), backend se:
 - `POST /api/admin/bulletins`: tao ban tin (can Bearer token admin).
 - `PUT /api/admin/bulletins/:id`: sua ban tin (can Bearer token admin).
 - `DELETE /api/admin/bulletins/:id`: xoa ban tin (can Bearer token admin).
+- `POST /api/admin/uploads/signature`: tao chu ky signed upload Cloudinary (can Bearer token admin).
 
 ### Cau hinh
 
