@@ -21,12 +21,12 @@ VALUES (
   NOW()
 )
 ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  email = EXCLUDED.email,
-  website = EXCLUDED.website,
-  dienthoai = EXCLUDED.dienthoai,
-  diachi = EXCLUDED.diachi,
-  hotline = EXCLUDED.hotline,
+  title = COALESCE(NULLIF(settings.title, ''), EXCLUDED.title),
+  email = COALESCE(NULLIF(settings.email, ''), EXCLUDED.email),
+  website = COALESCE(NULLIF(settings.website, ''), EXCLUDED.website),
+  dienthoai = COALESCE(NULLIF(settings.dienthoai, ''), EXCLUDED.dienthoai),
+  diachi = COALESCE(NULLIF(settings.diachi, ''), EXCLUDED.diachi),
+  hotline = COALESCE(NULLIF(settings.hotline, ''), EXCLUDED.hotline),
   updated_at = NOW();
 
 COMMIT;

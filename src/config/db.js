@@ -158,16 +158,14 @@ async function applyPendingMigrations() {
       }
 
       const sql = fs.readFileSync(file.fullPath, "utf8");
-      await client.query("BEGIN");
       try {
         await client.query(sql);
-        await client.query("INSERT INTO schema_migrations (filename) VALUES ($1)", [
-          file.filename,
-        ]);
-        await client.query("COMMIT");
+        await client.query(
+          "INSERT INTO schema_migrations (filename) VALUES ($1)",
+          [file.filename]
+        );
         console.log(`Applied migration: ${file.filename}`);
       } catch (error) {
-        await client.query("ROLLBACK");
         throw error;
       }
     }
