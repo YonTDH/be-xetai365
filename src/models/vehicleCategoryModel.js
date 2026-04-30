@@ -294,6 +294,192 @@ class VehicleCategoryModel {
     return mapLevel2Row(result.rows[0]);
   }
 
+  async createLevel1(payload) {
+    const client = await getPool().connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const nextData = {
+        slug: String(payload?.slug || "").trim().toLowerCase(),
+        name: String(payload?.name || "").trim(),
+        description: String(payload?.description || "").trim(),
+        titleSeo: String(payload?.titleSeo || payload?.title_seo || "").trim(),
+        keywords: String(payload?.keywords || "").trim(),
+        imageUrl: String(payload?.imageUrl || payload?.image_url || "").trim(),
+        sortOrder: Number(payload?.sortOrder ?? payload?.sort_order ?? 1),
+        isVisible: Boolean(payload?.isVisible ?? payload?.is_visible ?? true),
+        adminNote: String(payload?.adminNote || payload?.admin_note || "").trim(),
+      };
+
+      if (!nextData.slug) {
+        throw new Error("Missing slug");
+      }
+
+      if (!nextData.name) {
+        throw new Error("Missing name");
+      }
+
+      if (!Number.isInteger(nextData.sortOrder) || nextData.sortOrder < 1) {
+        throw new Error("Invalid sortOrder");
+      }
+
+      const result = await client.query(
+        `
+        INSERT INTO category_level_1 (
+          slug,
+          name,
+          description,
+          title_seo,
+          keywords,
+          image_url,
+          sort_order,
+          is_visible,
+          admin_note,
+          created_at,
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        RETURNING
+          id,
+          slug,
+          name,
+          description,
+          title_seo,
+          keywords,
+          image_url,
+          sort_order,
+          is_visible,
+          admin_note,
+          created_at,
+          updated_at
+        `,
+        [
+          nextData.slug,
+          nextData.name,
+          nextData.description,
+          nextData.titleSeo,
+          nextData.keywords,
+          nextData.imageUrl,
+          nextData.sortOrder,
+          nextData.isVisible,
+          nextData.adminNote,
+        ]
+      );
+
+      await client.query("COMMIT");
+      return mapLevel1Row(result.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async createLevel2(payload) {
+    const client = await getPool().connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const nextParentId = Number(payload?.parentId);
+      if (!Number.isInteger(nextParentId) || nextParentId < 1) {
+        throw new Error("Invalid parentId");
+      }
+
+      const parentResult = await client.query(
+        "SELECT slug AS parent_slug FROM category_level_1 WHERE id = $1 LIMIT 1",
+        [nextParentId]
+      );
+      if (!parentResult.rows.length) {
+        throw new Error("Category level 1 not found");
+      }
+
+      const nextData = {
+        parentId: nextParentId,
+        slug: String(payload?.slug || "").trim().toLowerCase(),
+        name: String(payload?.name || "").trim(),
+        description: String(payload?.description || "").trim(),
+        titleSeo: String(payload?.titleSeo || payload?.title_seo || "").trim(),
+        keywords: String(payload?.keywords || "").trim(),
+        imageUrl: String(payload?.imageUrl || payload?.image_url || "").trim(),
+        sortOrder: Number(payload?.sortOrder ?? payload?.sort_order ?? 1),
+        isVisible: Boolean(payload?.isVisible ?? payload?.is_visible ?? true),
+        adminNote: String(payload?.adminNote || payload?.admin_note || "").trim(),
+      };
+
+      if (!nextData.slug) {
+        throw new Error("Missing slug");
+      }
+
+      if (!nextData.name) {
+        throw new Error("Missing name");
+      }
+
+      if (!Number.isInteger(nextData.sortOrder) || nextData.sortOrder < 1) {
+        throw new Error("Invalid sortOrder");
+      }
+
+      const result = await client.query(
+        `
+        INSERT INTO category_level_2 (
+          category_level_1_id,
+          slug,
+          name,
+          description,
+          title_seo,
+          keywords,
+          image_url,
+          sort_order,
+          is_visible,
+          admin_note,
+          created_at,
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        RETURNING
+          id,
+          slug,
+          name,
+          description,
+          category_level_1_id,
+          title_seo,
+          keywords,
+          image_url,
+          sort_order,
+          is_visible,
+          admin_note,
+          created_at,
+          updated_at
+        `,
+        [
+          nextData.parentId,
+          nextData.slug,
+          nextData.name,
+          nextData.description,
+          nextData.titleSeo,
+          nextData.keywords,
+          nextData.imageUrl,
+          nextData.sortOrder,
+          nextData.isVisible,
+          nextData.adminNote,
+        ]
+      );
+
+      await client.query("COMMIT");
+      return mapLevel2Row({
+        ...result.rows[0],
+        parent_slug: parentResult.rows[0].parent_slug,
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async updateLevel1(id, payload) {
     const client = await getPool().connect();
 

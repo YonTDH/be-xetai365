@@ -120,6 +120,34 @@ async function upsertVehicleCategories(req, res) {
   }
 }
 
+async function createLevel1VehicleCategory(req, res) {
+  try {
+    const normalized = normalizeInputItem({
+      ...req.body,
+      adminLevel: 1,
+    });
+
+    const errorMessage = validateItem(normalized);
+    if (errorMessage) {
+      return res.status(400).json({
+        success: false,
+        message: errorMessage,
+      });
+    }
+
+    const data = await vehicleCategoryModel.createLevel1(normalized);
+    return res.status(201).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 async function updateLevel1VehicleCategory(req, res) {
   try {
     const id = Number(req.params.id);
@@ -179,6 +207,35 @@ async function deleteLevel1VehicleCategory(req, res) {
         : error.code === "CATEGORY_LEVEL_1_HAS_VISIBLE_CHILDREN"
           ? 409
           : 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function createLevel2VehicleCategory(req, res) {
+  try {
+    const normalized = normalizeInputItem({
+      ...req.body,
+      adminLevel: 2,
+    });
+
+    const errorMessage = validateItem(normalized);
+    if (errorMessage) {
+      return res.status(400).json({
+        success: false,
+        message: errorMessage,
+      });
+    }
+
+    const data = await vehicleCategoryModel.createLevel2(normalized);
+    return res.status(201).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    const statusCode = error.message === "Category level 1 not found" ? 404 : 500;
     return res.status(statusCode).json({
       success: false,
       message: error.message,
@@ -256,8 +313,10 @@ module.exports = {
   listVehicleCategories,
   listVehicleCategoriesTree,
   upsertVehicleCategories,
+  createLevel1VehicleCategory,
   updateLevel1VehicleCategory,
   deleteLevel1VehicleCategory,
+  createLevel2VehicleCategory,
   updateLevel2VehicleCategory,
   deleteLevel2VehicleCategory,
 };
