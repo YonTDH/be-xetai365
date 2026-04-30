@@ -8,6 +8,7 @@ function normalizeFolder(folder) {
     news: "news",
     promotions: "promotions",
     recruitment: "recruitment",
+    services: "services",
     pages: "pages",
   };
 

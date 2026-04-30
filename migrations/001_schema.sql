@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS settings (
   toado TEXT NOT NULL DEFAULT '',
   facebook TEXT NOT NULL DEFAULT '',
   youtube TEXT NOT NULL DEFAULT '',
-  yahoo TEXT NOT NULL DEFAULT '',
+  zalo TEXT NOT NULL DEFAULT '',
   skype TEXT NOT NULL DEFAULT '',
   twitter TEXT NOT NULL DEFAULT '',
   zing TEXT NOT NULL DEFAULT '',
@@ -166,11 +166,11 @@ CREATE TABLE IF NOT EXISTS contact_requests (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Bulletins (news / events / promotions)
+-- Bulletins (news / events / promotions / services)
 CREATE TABLE IF NOT EXISTS bulletins (
   id BIGSERIAL PRIMARY KEY,
   slug VARCHAR(220) NOT NULL UNIQUE,
-  bulletin_type VARCHAR(40) NOT NULL CHECK (bulletin_type IN ('news_event', 'promotion', 'recruitment')),
+  bulletin_type VARCHAR(40) NOT NULL CHECK (bulletin_type IN ('news_event', 'promotion', 'recruitment', 'services')),
   category_id BIGINT NULL,
   title TEXT NOT NULL,
   name TEXT NOT NULL DEFAULT '',
@@ -249,7 +249,7 @@ ALTER TABLE bulletins
 
 ALTER TABLE bulletins
   ADD CONSTRAINT ck_bulletins_type
-    CHECK (bulletin_type IN ('news_event', 'promotion', 'recruitment')),
+    CHECK (bulletin_type IN ('news_event', 'promotion', 'recruitment', 'services')),
   ADD CONSTRAINT ck_bulletins_featured_visible
     CHECK (is_visible OR NOT is_featured);
 

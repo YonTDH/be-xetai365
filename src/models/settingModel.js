@@ -22,7 +22,7 @@ function mapSettingRow(row) {
     toado: row.toado,
     facebook: row.facebook,
     youtube: row.youtube,
-    yahoo: row.yahoo,
+    zalo: row.zalo,
     skype: row.skype,
     twitter: row.twitter,
     zing: row.zing,
@@ -44,7 +44,7 @@ class SettingModel {
       SELECT
         id, title, keywords, description, giupdochiase, ten, email, website,
         dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
-        hotline2, toado, facebook, youtube, yahoo, skype, twitter, zing,
+        hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
         google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
       FROM settings
       WHERE id = 1
@@ -72,7 +72,7 @@ class SettingModel {
       INSERT INTO settings (
         id, title, keywords, description, giupdochiase, ten, email, website,
         dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
-        hotline2, toado, facebook, youtube, yahoo, skype, twitter, zing,
+        hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
         google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
       )
       VALUES (
@@ -99,7 +99,7 @@ class SettingModel {
         toado = EXCLUDED.toado,
         facebook = EXCLUDED.facebook,
         youtube = EXCLUDED.youtube,
-        yahoo = EXCLUDED.yahoo,
+        zalo = EXCLUDED.zalo,
         skype = EXCLUDED.skype,
         twitter = EXCLUDED.twitter,
         zing = EXCLUDED.zing,
@@ -114,7 +114,7 @@ class SettingModel {
       RETURNING
         id, title, keywords, description, giupdochiase, ten, email, website,
         dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
-        hotline2, toado, facebook, youtube, yahoo, skype, twitter, zing,
+        hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
         google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
       `,
       [
@@ -137,7 +137,7 @@ class SettingModel {
         merged.toado || "",
         merged.facebook || "",
         merged.youtube || "",
-        merged.yahoo || "",
+        merged.zalo || "",
         merged.skype || "",
         merged.twitter || "",
         merged.zing || "",

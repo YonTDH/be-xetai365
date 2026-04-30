@@ -181,7 +181,7 @@ async function ensureSeedData() {
     INSERT INTO settings (
       id, title, keywords, description, giupdochiase, ten, email, website,
       dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
-      hotline2, toado, facebook, youtube, yahoo, skype, twitter, zing,
+      hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
       google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
     )
     VALUES (

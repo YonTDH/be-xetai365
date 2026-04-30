@@ -5,6 +5,7 @@ const BULLETIN_TYPE_NAMES = {
   news_event: "Tin tuc - Su kien",
   promotion: "Khuyen mai",
   recruitment: "Recruitment",
+  services: "Dich vu",
 };
 
 const BULLETIN_TYPE_ALIASES = {
@@ -20,6 +21,10 @@ const BULLETIN_TYPE_ALIASES = {
   recruitment: "recruitment",
   "tuyen-nhan-su": "recruitment",
   tuyennhansu: "recruitment",
+  services: "services",
+  service: "services",
+  "dich-vu": "services",
+  dichvu: "services",
 };
 
 const ALLOWED_STATUSES = new Set(["draft", "published", "archived"]);

@@ -5,6 +5,7 @@ function resolveFolderByBulletinType(type) {
   if (type === "products" || type === "product") return "products";
   if (type === "recruitment") return "recruitment";
   if (type === "promotion") return "promotions";
+  if (type === "services" || type === "service") return "services";
   return "news";
 }
 
