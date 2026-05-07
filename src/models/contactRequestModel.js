@@ -64,7 +64,7 @@ class ContactRequestModel {
     const totalItems = countResult.rows[0]?.total || 0;
 
     const unviewedCountResult = await getPool().query(
-      `SELECT COUNT(*)::int AS total FROM contact_requests WHERE is_viewed = FALSE`
+      `SELECT COUNT(*)::int AS total FROM contact_requests WHERE LOWER(status) = 'new'`
     );
     const unviewedCount = unviewedCountResult.rows[0]?.total || 0;
 
@@ -101,7 +101,7 @@ class ContactRequestModel {
       `
       SELECT COUNT(*)::int AS unviewed_count
       FROM contact_requests
-      WHERE is_viewed = FALSE
+      WHERE LOWER(status) = 'new'
       `
     );
 
@@ -123,6 +123,31 @@ class ContactRequestModel {
     return {
       updatedCount: result.rowCount || 0,
     };
+  }
+
+  async markViewedById(id) {
+    const safeId = Number(id);
+    if (!Number.isFinite(safeId)) {
+      return null;
+    }
+
+    const result = await getPool().query(
+      `
+      UPDATE contact_requests
+      SET is_viewed = TRUE, updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id, full_name, email, phone, content, vehicle_id, status,
+        is_viewed, contacted_at, created_at, updated_at
+      `,
+      [safeId]
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return mapRow(result.rows[0]);
   }
 
   async updateStatus(id, status) {

@@ -8,6 +8,7 @@ router.get("/summary", requireAdminAuth, contactRequestController.getContactRequ
 router.get("/", requireAdminAuth, contactRequestController.listContactRequests);
 router.post("/", contactRequestController.createContactRequest);
 router.patch("/mark-viewed", requireAdminAuth, contactRequestController.markContactRequestsViewed);
+router.patch("/:id/viewed", requireAdminAuth, contactRequestController.markContactRequestViewed);
 router.patch("/:id/status", requireAdminAuth, contactRequestController.updateContactRequestStatus);
 
 module.exports = router;
