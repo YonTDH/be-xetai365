@@ -9,6 +9,7 @@ function mapRow(row) {
     content: row.content,
     vehicleId: row.vehicle_id,
     status: row.status,
+    isViewed: row.is_viewed,
     contactedAt: row.contacted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -28,12 +29,12 @@ class ContactRequestModel {
     const result = await getPool().query(
       `
       INSERT INTO contact_requests (
-        full_name, email, phone, content, vehicle_id, status, created_at, updated_at
+        full_name, email, phone, content, vehicle_id, status, is_viewed, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, 'new', NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, 'new', FALSE, NOW(), NOW())
       RETURNING
         id, full_name, email, phone, content, vehicle_id, status,
-        contacted_at, created_at, updated_at
+        is_viewed, contacted_at, created_at, updated_at
       `,
       [
         payload.fullName,
@@ -62,11 +63,16 @@ class ContactRequestModel {
     );
     const totalItems = countResult.rows[0]?.total || 0;
 
+    const unviewedCountResult = await getPool().query(
+      `SELECT COUNT(*)::int AS total FROM contact_requests WHERE is_viewed = FALSE`
+    );
+    const unviewedCount = unviewedCountResult.rows[0]?.total || 0;
+
     const result = await getPool().query(
       `
       SELECT
         id, full_name, email, phone, content, vehicle_id, status,
-        contacted_at, created_at, updated_at
+        is_viewed, contacted_at, created_at, updated_at
       FROM contact_requests
       ${whereSql}
       ORDER BY id DESC
@@ -84,6 +90,38 @@ class ContactRequestModel {
         totalItems,
         totalPages: Math.ceil(totalItems / safeLimit),
       },
+      summary: {
+        unviewedCount,
+      },
+    };
+  }
+
+  async getSummary() {
+    const result = await getPool().query(
+      `
+      SELECT COUNT(*)::int AS unviewed_count
+      FROM contact_requests
+      WHERE is_viewed = FALSE
+      `
+    );
+
+    return {
+      unviewedCount: result.rows[0]?.unviewed_count || 0,
+    };
+  }
+
+  async markViewed() {
+    const result = await getPool().query(
+      `
+      UPDATE contact_requests
+      SET is_viewed = TRUE, updated_at = NOW()
+      WHERE is_viewed = FALSE
+      RETURNING id
+      `
+    );
+
+    return {
+      updatedCount: result.rowCount || 0,
     };
   }
 
@@ -104,11 +142,12 @@ class ContactRequestModel {
           WHEN $2::text = 'contacted' AND contacted_at IS NULL THEN NOW()::timestamptz
           ELSE contacted_at
         END::timestamptz,
+        is_viewed = TRUE,
         updated_at = NOW()
       WHERE id = $1
       RETURNING
         id, full_name, email, phone, content, vehicle_id, status,
-        contacted_at, created_at, updated_at
+        is_viewed, contacted_at, created_at, updated_at
       `,
       [safeId, normalizedStatus]
     );

@@ -41,6 +41,36 @@ async function listContactRequests(req, res) {
   }
 }
 
+async function getContactRequestsSummary(_req, res) {
+  try {
+    const data = await contactRequestModel.getSummary();
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function markContactRequestsViewed(_req, res) {
+  try {
+    const data = await contactRequestModel.markViewed();
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 async function updateContactRequestStatus(req, res) {
   try {
     const status = String(req.body?.status || "").trim().toLowerCase();
@@ -74,5 +104,7 @@ async function updateContactRequestStatus(req, res) {
 module.exports = {
   createContactRequest,
   listContactRequests,
+  getContactRequestsSummary,
+  markContactRequestsViewed,
   updateContactRequestStatus,
 };
