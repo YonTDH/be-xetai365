@@ -1,146 +1,195 @@
-# be-xetai365
+# BE XeTai365
 
-Backend Node.js + Express cho du an XeTai365.
+Demo API: https://be-xetai365.onrender.com/
 
-Trang thai hien tai: migration skeleton tu PHP legacy sang API Node.js.
-Du lieu static (catalog/content/legacy routes) dang doc tu `src/data/siteData.js`.
-Du lieu stateful (`settings`, `vehicles`, `vehicle_categories`, `contact_requests`, `legacy_routes`) da chay tren PostgreSQL.
-Model `xe` va `loai xe` da migrate qua PostgreSQL (`vehicles`, `vehicle_categories`).
+Backend Node.js + Express cho hệ thống XeTai365. Dịch vụ này cung cấp public API cho frontend, admin API cho CMS, migration PostgreSQL, seed dữ liệu ban đầu và signed upload flow cho media.
 
-## Yeu cau
+## Mục tiêu dự án
 
-- Node.js 18+
-- npm 9+
+- Cung cấp REST API cho public website và admin CMS.
+- Tách dữ liệu động khỏi frontend để có thể quản lý nội dung từ admin.
+- Hỗ trợ migration từ hệ thống legacy sang stack Node.js + PostgreSQL.
+- Giữ được SEO route mapping cũ trong quá trình chuyển đổi.
 
-## Chay local
+## Phạm vi chức năng
 
-```bash
-npm install
-npm run dev
+### Public API
+
+- Health check và root ping.
+- Lấy dữ liệu trang chủ, danh mục, sản phẩm, chi tiết sản phẩm.
+- Lấy dữ liệu settings, pages, news, bulletins.
+- Search theo từ khóa.
+- Nhận form contact request từ website.
+- Resolve legacy routes để mapping URL cũ sang route mới.
+
+### Admin API
+
+- Đăng nhập admin bằng JWT.
+- CRUD bulletins cho news, promotion, recruitment, services.
+- CRUD sản phẩm.
+- CRUD danh mục xe cấp 1, cấp 2.
+- Cập nhật site settings.
+- Xem và cập nhật trạng thái contact requests.
+- Tạo Cloudinary signed upload signature.
+- Import `.docx` và convert thành HTML cho bulletin/sản phẩm.
+
+## Tech stack
+
+- Node.js
+- Express 5
+- PostgreSQL (`pg`)
+- JWT (`jsonwebtoken`)
+- bcryptjs
+- Multer
+- Mammoth
+- Cloudinary signed upload flow
+
+## Cấu trúc thư mục
+
+```text
+src/
+  app.js                  express app và route registration
+  server.js               bootstrap server
+  config/db.js            pool PostgreSQL, migration, seed
+  controllers/            xử lý request/response
+  middlewares/            auth middleware
+  models/                 truy vấn database theo module
+  routes/                 public + admin routes
+  utils/                  jwt, cloudinary, pagination, request helpers
+  data/siteData.js        dữ liệu seed/legacy content
+migrations/               SQL migrations
+scripts/migrate.js        chạy migration thủ công
 ```
 
-Mac dinh server chay tai `http://localhost:3000`.
+## Môi trường chạy
 
-## Bien moi truong
+- Node.js `18+`
+- npm `9+`
+- PostgreSQL
 
-Tao file `.env` tu `.env.example`:
+File mẫu đã có sẵn: `.env.example`
+
+Biến môi trường chính:
 
 ```env
 PORT=3000
 CLIENT_URL=http://localhost:5173
-API_PREFIX=/api
 DATABASE_URL=
 POSTGRES_HOST=127.0.0.1
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=xetai365
+POSTGRES_PASSWORD=
 POSTGRES_SSL=false
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
+ADMIN_USERNAME=
+ADMIN_PASSWORD=
 ADMIN_FULL_NAME=System Admin
 JWT_SECRET=change-this-jwt-secret
 JWT_EXPIRES_IN=8h
-CLOUDINARY_CLOUD_NAME=dn7gvdedx
-CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 CLOUDINARY_FOLDER=xetai365
 CLOUDINARY_UPLOAD_PRESET=xetai365_admin
+SELF_PING_ENABLED=false
+SELF_PING_URL=
+SELF_PING_INTERVAL_MS=840000
+SELF_PING_TIMEOUT_MS=10000
 ```
 
-`DATABASE_URL` uu tien cao hon `POSTGRES_*`. Khi deploy Render, co the paste thang Internal/External Database URL vao bien nay.
+`DATABASE_URL` được ưu tiên cao hơn `POSTGRES_*`.
 
-## Migration PostgreSQL
-
-Chay migration schema:
+## Chạy local
 
 ```bash
-npm run migrate
+npm install
+cp .env.example .env
+npm run dev
 ```
 
-Migration SQL nam trong thu muc `migrations/`.
+Mặc định server chạy tại `http://localhost:3000`.
 
-Khi khoi dong app (`npm run dev` / `npm start`), backend se:
-- ket noi PostgreSQL;
-- kiem tra va apply migration chua chay;
-- bo qua migration da ton tai;
-- seed du lieu mac dinh cho `settings`, `bulletins`, `site_pages`, `legacy_routes`, `products`, `admin_users` neu bang rong.
+## Scripts
 
-## Cau truc chinh
+- `npm run dev`: chạy local với nodemon
+- `npm start`: chạy production mode
+- `npm run migrate`: apply SQL migrations
 
-- `src/app.js`: khoi tao express app va dang ky route.
-- `src/server.js`: boot server.
-- `src/data/siteData.js`: seed du lieu public (product/news/page/legacy route).
-- `src/models/*`: xu ly du lieu theo module.
-- `src/controllers/*`: xu ly request/response.
-- `src/routes/*`: khai bao endpoint.
+## Database và bootstrap
 
-## API hien co
+Khi app khởi động, backend sẽ:
 
-### He thong
+- kết nối PostgreSQL
+- tạo bảng `schema_migrations` nếu chưa có
+- apply các migration chưa chạy trong `migrations/`
+- seed dữ liệu mặc định cho settings, pages, bulletins, products, legacy routes, admin users nếu bảng đang rỗng
 
-- `GET /api/health`: health check.
-- `GET /`: ping root message.
-- `POST /api/admin/auth/login`: dang nhap admin, tra JWT token.
-- `GET /api/admin/auth/me`: thong tin admin dang nhap (can Bearer token).
-- `GET /api/admin/vehicle-categories`: danh sach loai xe (khong can token).
-- `POST /api/admin/vehicle-categories`: tao/cap nhat loai xe (can Bearer token admin, ho tro `parentId`/`parentSlug` de tao category con).
-- `GET /api/admin/bulletins`: danh sach ban tin (can Bearer token admin).
-- `GET /api/admin/bulletins/:id`: chi tiet ban tin theo id (can Bearer token admin).
-- `POST /api/admin/bulletins`: tao ban tin (can Bearer token admin).
-- `PUT /api/admin/bulletins/:id`: sua ban tin (can Bearer token admin).
-- `DELETE /api/admin/bulletins/:id`: xoa ban tin (can Bearer token admin).
-- `POST /api/admin/uploads/signature`: tao chu ky signed upload Cloudinary (can Bearer token admin).
+Điều này giúp repo chạy nhanh trong giai đoạn migration, nhưng đồng thời cần quản lý seed cẩn thận khi đưa lên môi trường thật.
 
-### Cau hinh
+## Keep-alive cho Render
 
-- `GET /api/settings`: lay setting website.
-- `PUT /api/settings`: cap nhat setting (can Bearer token admin).
+Backend có hỗ trợ self-ping dạng opt-in để giữ service hoạt động lâu hơn trên Render free instance.
 
-### Xe / Noi dung cong khai
+Thiết lập:
 
-- `GET /api/catalog/categories`
-- `GET /api/catalog/categories/tree`
-- `GET /api/catalog/products`
-  - query ho tro: `page, limit, keyword, brand, status, category, condition, featured`
-- `GET /api/catalog/products/:idOrSlug`
-- `GET /api/vehicles`
-- `GET /api/vehicles/:id`
-- `POST /api/vehicles` -> `501 Not Implemented`
-- `PUT /api/vehicles/:id` -> `501 Not Implemented`
-- `DELETE /api/vehicles/:id` -> `501 Not Implemented`
+```env
+SELF_PING_ENABLED=true
+SELF_PING_URL=https://be-xetai365.onrender.com/api/health
+SELF_PING_INTERVAL_MS=840000
+SELF_PING_TIMEOUT_MS=10000
+```
+
+Ghi chú:
+
+- Cơ chế này sẽ gọi định kỳ vào health endpoint qua public URL của chính service.
+- Theo docs của Render, free web service bị spin down sau 15 phút không có inbound traffic, nên interval mặc định đang để `14` phút.
+- Cách này làm service gần như chạy liên tục, có thể tiêu tốn toàn bộ free instance hours trong tháng.
+- Nếu dùng paid instance thì không cần bật self-ping.
+
+## API modules
+
+### System
+
+- `GET /`
+- `GET /api/health`
+
+### Public content
+
 - `GET /api/content/home`
-- `GET /api/content/news/categories`
 - `GET /api/content/news`
 - `GET /api/content/news/:idOrSlug`
 - `GET /api/content/bulletins`
 - `GET /api/content/bulletins/:idOrSlug`
 - `GET /api/content/pages/:slug`
+- `GET /api/settings`
 - `GET /api/search?q=...`
 
-### Form lien he
+### Catalog
+
+- `GET /api/catalog/categories`
+- `GET /api/catalog/categories/tree`
+- `GET /api/catalog/products`
+- `GET /api/catalog/products/:idOrSlug`
+- `GET /api/vehicles`
+- `GET /api/vehicles/:id`
+
+### Contact requests
 
 - `POST /api/contact-requests`
-- `GET /api/contact-requests` (can Bearer token admin)
-- `PATCH /api/contact-requests/:id/status` (can Bearer token admin)
+- `GET /api/contact-requests`
+- `PATCH /api/contact-requests/:id/status`
+- `PATCH /api/contact-requests/:id/viewed`
+- `PATCH /api/contact-requests/mark-viewed`
+- `GET /api/contact-requests/summary`
 
-### Mapping URL legacy
+### Admin
 
-- `GET /api/legacy-routes`
-- `GET /api/legacy-routes/resolve?path=/gioi-thieu.html`
-
-## Vi du nhanh
-
-### Gui form lien he
-
-```bash
-curl -X POST http://localhost:3000/api/contact-requests \
-  -H "Content-Type: application/json" \
-  -d '{"fullName":"Nguyen Van A","phone":"0900000000","email":"a@example.com","content":"Can tu van xe tai","vehicleId":1}'
-```
-
-## Ghi chu migration
-
-- Skeleton nay uu tien luong public, lead form lien he va mapping route SEO legacy.
-- Chua co auth/RBAC, validation schema day du, upload/media service, email queue.
-- Buoc tiep theo: gan ORM + MySQL schema moi, bo sung auth va migration data tu legacy.
+- `POST /api/admin/auth/login`
+- `GET /api/admin/auth/me`
+- `GET|POST|PUT|DELETE /api/admin/bulletins`
+- `POST /api/admin/bulletins/import-docx`
+- `GET|POST|PUT|DELETE /api/admin/products`
+- `GET /api/admin/vehicle-categories/tree`
+- `POST|PUT|DELETE /api/admin/vehicle-categories/level-1`
+- `POST|PUT|DELETE /api/admin/vehicle-categories/level-2`
+- `POST /api/admin/uploads/signature`
+- `PUT /api/settings`
