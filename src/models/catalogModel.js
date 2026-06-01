@@ -293,7 +293,9 @@ class CatalogModel {
     const category = normalizeText(filters.category);
     const condition = normalizeText(filters.condition);
     const featuredOnly = String(filters.featured || "").trim() === "true";
-    const includeHidden = String(filters.includeHidden || "").trim() === "true";
+    const includeHidden =
+      filters.allowIncludeHidden === true &&
+      String(filters.includeHidden || "").trim() === "true";
 
     const whereClauses = [];
     const params = [];

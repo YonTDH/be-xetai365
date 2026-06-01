@@ -64,7 +64,7 @@ class ContactRequestModel {
     const totalItems = countResult.rows[0]?.total || 0;
 
     const unviewedCountResult = await getPool().query(
-      `SELECT COUNT(*)::int AS total FROM contact_requests WHERE LOWER(status) = 'new'`
+      `SELECT COUNT(*)::int AS total FROM contact_requests WHERE is_viewed = FALSE`
     );
     const unviewedCount = unviewedCountResult.rows[0]?.total || 0;
 
@@ -101,7 +101,7 @@ class ContactRequestModel {
       `
       SELECT COUNT(*)::int AS unviewed_count
       FROM contact_requests
-      WHERE LOWER(status) = 'new'
+      WHERE is_viewed = FALSE
       `
     );
 
