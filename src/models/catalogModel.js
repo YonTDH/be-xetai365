@@ -315,6 +315,14 @@ class CatalogModel {
           OR LOWER(p.short_description) LIKE $${params.length}
           OR LOWER(p.content) LIKE $${params.length}
           OR LOWER(p.product_code) LIKE $${params.length}
+          OR LOWER(p.title_seo) LIKE $${params.length}
+          OR LOWER(p.keywords) LIKE $${params.length}
+          OR LOWER(p.meta_description) LIKE $${params.length}
+          OR LOWER(p.brand) LIKE $${params.length}
+          OR LOWER(c2.name) LIKE $${params.length}
+          OR LOWER(c2.slug) LIKE $${params.length}
+          OR LOWER(c1.name) LIKE $${params.length}
+          OR LOWER(c1.slug) LIKE $${params.length}
         )`
       );
     }
