@@ -73,9 +73,46 @@ async function uploadBufferToCloudinary(buffer, options = {}) {
   };
 }
 
+async function listCloudinaryImages(options = {}) {
+  const { cloudName, apiKey, apiSecret, baseFolder } = assertCloudinaryConfig();
+  const folderLeaf = String(options.folder || "products")
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+  const folder = `${baseFolder}/${folderLeaf}`;
+  const maxResults = Math.min(Math.max(Number(options.maxResults) || 30, 1), 100);
+  const url = new URL(`https://api.cloudinary.com/v1_1/${cloudName}/resources/image`);
+  url.searchParams.set("type", "upload");
+  url.searchParams.set("prefix", folder);
+  url.searchParams.set("max_results", String(maxResults));
+
+  const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error?.message || "Cloudinary list failed.");
+  }
+
+  const resources = Array.isArray(data.resources) ? data.resources : [];
+  return resources.map((resource) => ({
+    publicId: String(resource.public_id || "").trim(),
+    imageUrl: String(resource.secure_url || resource.url || "").trim(),
+    width: Number(resource.width) || 0,
+    height: Number(resource.height) || 0,
+    format: String(resource.format || "").trim(),
+    createdAt: String(resource.created_at || "").trim(),
+  })).filter((item) => item.publicId && item.imageUrl);
+}
+
 module.exports = {
   getCloudinaryConfig,
   assertCloudinaryConfig,
   createCloudinarySignature,
   uploadBufferToCloudinary,
+  listCloudinaryImages,
 };

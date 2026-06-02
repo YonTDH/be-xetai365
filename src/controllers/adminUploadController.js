@@ -1,4 +1,4 @@
-const { assertCloudinaryConfig, createCloudinarySignature } = require("../utils/cloudinary");
+const { assertCloudinaryConfig, createCloudinarySignature, listCloudinaryImages } = require("../utils/cloudinary");
 
 function normalizeFolder(folder) {
   const { baseFolder } = assertCloudinaryConfig();
@@ -51,6 +51,26 @@ async function createUploadSignature(req, res) {
   });
 }
 
+async function listUploadedImages(req, res) {
+  try {
+    const items = await listCloudinaryImages({
+      folder: req.query?.folder,
+      maxResults: req.query?.limit,
+    });
+
+    return res.json({
+      success: true,
+      data: { items },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   createUploadSignature,
+  listUploadedImages,
 };
