@@ -7,7 +7,7 @@ INSERT INTO category_level_1 (slug, name, description, title_seo, keywords, sort
 VALUES
   ('xe-tai', U&'Xe t\1EA3i', U&'Danh m\1EE5c xe t\1EA3i', U&'Xe t\1EA3i', U&'xe t\1EA3i', 1, TRUE, NOW()),
   ('xe-chuyen-dung', U&'Xe chuy\00EAn d\1EE5ng', U&'Danh m\1EE5c xe chuy\00EAn d\1EE5ng', U&'Xe chuy\00EAn d\1EE5ng', U&'xe chuy\00EAn d\1EE5ng', 2, TRUE, NOW()),
-  ('so-mi-ro-mooc', U&'S\01A1 mi r\01A1 mooc', U&'Danh m\1EE5c s\01A1 mi r\01A1 mooc', U&'S\01A1 mi r\01A1 mooc', U&'s\01A1 mi r\01A1 mooc', 3, TRUE, NOW()),
+  ('so-mi-ro-mooc', 'Somiromooc', 'Danh muc Somiromooc', 'Somiromooc', 'Somiromooc', 3, TRUE, NOW()),
   ('xe-dau-keo', U&'Xe \0111\1EA7u k\00E9o', U&'Danh m\1EE5c xe \0111\1EA7u k\00E9o', U&'Xe \0111\1EA7u k\00E9o', U&'xe \0111\1EA7u k\00E9o', 4, TRUE, NOW())
 ON CONFLICT (slug) DO UPDATE
 SET
@@ -52,12 +52,12 @@ FROM (
     ('dau-keo-dongfeng', U&'\0110\1EA7u k\00E9o Dongfeng', 'xe-dau-keo', 303),
     ('dau-keo-howo', U&'\0110\1EA7u k\00E9o Howo', 'xe-dau-keo', 304),
     ('tong-hop-xe-dau-keo', U&'T\1ED5ng h\1EE3p xe \0111\1EA7u k\00E9o', 'xe-dau-keo', 902),
-    ('so-mi-ro-mooc-ben', U&'S\01A1 mi r\01A1 mooc ben', 'so-mi-ro-mooc', 401),
-    ('so-mi-ro-mooc-long', U&'S\01A1 mi r\01A1 mooc l\1ED3ng', 'so-mi-ro-mooc', 402),
-    ('so-mi-ro-mooc-phu-tung', U&'Ph\1EE5 t\00F9ng s\01A1 mi r\01A1 mooc', 'so-mi-ro-mooc', 403),
-    ('so-mi-ro-mooc-bon', U&'S\01A1 mi r\01A1 mooc b\1ED3n', 'so-mi-ro-mooc', 404),
-    ('so-mi-ro-mooc-xitec', U&'S\01A1 mi r\01A1 mooc xi t\00E9c', 'so-mi-ro-mooc', 405),
-    ('tong-hop-so-mi-ro-mooc', U&'T\1ED5ng h\1EE3p s\01A1 mi r\01A1 mooc', 'so-mi-ro-mooc', 903)
+    ('so-mi-ro-mooc-ben', 'Somiromooc ben', 'so-mi-ro-mooc', 401),
+    ('so-mi-ro-mooc-long', 'Somiromooc long', 'so-mi-ro-mooc', 402),
+    ('so-mi-ro-mooc-phu-tung', 'Phu tung Somiromooc', 'so-mi-ro-mooc', 403),
+    ('so-mi-ro-mooc-bon', 'Somiromooc bon', 'so-mi-ro-mooc', 404),
+    ('so-mi-ro-mooc-xitec', 'Somiromooc xitec', 'so-mi-ro-mooc', 405),
+    ('tong-hop-so-mi-ro-mooc', 'Tong hop Somiromooc', 'so-mi-ro-mooc', 903)
 ) AS v(slug, name, parent_slug, sort_order)
 JOIN category_level_1 c1 ON c1.slug = v.parent_slug
 ON CONFLICT (slug) DO UPDATE
