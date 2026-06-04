@@ -78,27 +78,39 @@ async function listCloudinaryImages(options = {}) {
   const folderLeaf = String(options.folder || "products")
     .trim()
     .replace(/^\/+|\/+$/g, "");
-  const folder = `${baseFolder}/${folderLeaf}`;
-  const maxResults = Math.min(Math.max(Number(options.maxResults) || 30, 1), 100);
-  const url = new URL(`https://api.cloudinary.com/v1_1/${cloudName}/resources/image`);
-  url.searchParams.set("type", "upload");
-  url.searchParams.set("prefix", folder);
-  url.searchParams.set("max_results", String(maxResults));
+  const shouldListAll = folderLeaf === "all" || folderLeaf === "*";
+  const folder = shouldListAll ? baseFolder : `${baseFolder}/${folderLeaf}`;
+  const maxResults = Math.min(Math.max(Number(options.maxResults) || 30, 1), 500);
 
   const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-    },
-  });
+  const resources = [];
+  let nextCursor = "";
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.error?.message || "Cloudinary list failed.");
-  }
+  do {
+    const url = new URL(`https://api.cloudinary.com/v1_1/${cloudName}/resources/image`);
+    url.searchParams.set("type", "upload");
+    url.searchParams.set("prefix", folder);
+    url.searchParams.set("max_results", String(Math.min(maxResults - resources.length, 100)));
+    if (nextCursor) {
+      url.searchParams.set("next_cursor", nextCursor);
+    }
 
-  const resources = Array.isArray(data.resources) ? data.resources : [];
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+      },
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error?.message || "Cloudinary list failed.");
+    }
+
+    resources.push(...(Array.isArray(data.resources) ? data.resources : []));
+    nextCursor = String(data.next_cursor || "");
+  } while (nextCursor && resources.length < maxResults);
+
   return resources.map((resource) => ({
     publicId: String(resource.public_id || "").trim(),
     imageUrl: String(resource.secure_url || resource.url || "").trim(),
