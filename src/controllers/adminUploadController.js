@@ -10,6 +10,8 @@ function normalizeFolder(folder) {
     recruitment: "recruitment",
     services: "services",
     pages: "pages",
+    logos: "logos",
+    slides: "slides",
   };
 
   const leafFolder = folderMap[String(folder || "").trim()] || "products";

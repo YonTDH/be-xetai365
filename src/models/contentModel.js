@@ -50,7 +50,7 @@ class ContentModel {
     return mapPageRow(result.rows[0]);
   }
 
-  getHomeData({ featuredProducts, setting, latestNews = [] }) {
+  getHomeData({ featuredProducts, setting, latestNews = [], slides = [] }) {
     const safeSetting = setting || {
       title: "",
       description: "",
@@ -65,6 +65,7 @@ class ContentModel {
       },
       featuredProducts,
       latestNews,
+      slides,
     };
   }
 }

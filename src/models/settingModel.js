@@ -10,6 +10,7 @@ function mapSettingRow(row) {
     ten: row.ten,
     email: row.email,
     website: row.website,
+    logoUrl: row.logo_url,
     dienthoai: row.dienthoai,
     diachi: row.diachi,
     fax: row.fax,
@@ -42,7 +43,7 @@ class SettingModel {
     const result = await getPool().query(
       `
       SELECT
-        id, title, keywords, description, giupdochiase, ten, email, website,
+        id, title, keywords, description, giupdochiase, ten, email, website, logo_url,
         dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
         hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
         google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
@@ -70,14 +71,14 @@ class SettingModel {
     const result = await getPool().query(
       `
       INSERT INTO settings (
-        id, title, keywords, description, giupdochiase, ten, email, website,
+        id, title, keywords, description, giupdochiase, ten, email, website, logo_url,
         dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
         hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
         google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
       )
       VALUES (
         1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, NOW()
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
@@ -87,6 +88,7 @@ class SettingModel {
         ten = EXCLUDED.ten,
         email = EXCLUDED.email,
         website = EXCLUDED.website,
+        logo_url = EXCLUDED.logo_url,
         dienthoai = EXCLUDED.dienthoai,
         diachi = EXCLUDED.diachi,
         fax = EXCLUDED.fax,
@@ -112,7 +114,7 @@ class SettingModel {
         hailong = EXCLUDED.hailong,
         updated_at = NOW()
       RETURNING
-        id, title, keywords, description, giupdochiase, ten, email, website,
+        id, title, keywords, description, giupdochiase, ten, email, website, logo_url,
         dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
         hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
         google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
@@ -125,6 +127,7 @@ class SettingModel {
         merged.ten || "",
         merged.email || "",
         merged.website || "",
+        merged.logoUrl || merged.logo_url || "",
         merged.dienthoai || "",
         merged.diachi || "",
         merged.fax || "",

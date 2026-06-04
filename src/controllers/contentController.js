@@ -2,6 +2,7 @@ const catalogModel = require("../models/catalogModel");
 const contentModel = require("../models/contentModel");
 const bulletinModel = require("../models/bulletinModel");
 const settingModel = require("../models/settingModel");
+const homeSlideModel = require("../models/homeSlideModel");
 
 async function getHome(_req, res) {
   try {
@@ -9,6 +10,7 @@ async function getHome(_req, res) {
     const featuredProducts = await catalogModel.getFeaturedProducts(6);
     const latestNews = (await bulletinModel.list({ type: "news_event", page: 1, limit: 3 }, { publicOnly: true }))
       .items;
+    const slides = await homeSlideModel.list({ publicOnly: true });
 
     res.json({
       success: true,
@@ -16,6 +18,7 @@ async function getHome(_req, res) {
         featuredProducts,
         setting,
         latestNews,
+        slides,
       }),
     });
   } catch (error) {

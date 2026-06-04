@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS settings (
   ten TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL DEFAULT '',
   website TEXT NOT NULL DEFAULT '',
+  logo_url TEXT NOT NULL DEFAULT '',
   dienthoai TEXT NOT NULL DEFAULT '',
   diachi TEXT NOT NULL DEFAULT '',
   fax TEXT NOT NULL DEFAULT '',
@@ -58,6 +59,20 @@ CREATE TABLE IF NOT EXISTS settings (
   hailong TEXT NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS home_slides (
+  id BIGSERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL DEFAULT '',
+  image_url TEXT NOT NULL,
+  link_url TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 1,
+  is_visible BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_home_slides_visible_order
+  ON home_slides (is_visible, sort_order, id);
 
 -- Route mapping
 CREATE TABLE IF NOT EXISTS legacy_routes (

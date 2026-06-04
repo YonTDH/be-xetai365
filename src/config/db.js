@@ -178,7 +178,7 @@ async function ensureSeedData() {
   await getPool().query(`
     INSERT INTO settings (
       id, title, keywords, description, giupdochiase, ten, email, website,
-      dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
+      logo_url, dienthoai, diachi, fax, tennv, hotline, tennv1, hotline1, tennv2,
       hotline2, toado, facebook, youtube, zalo, skype, twitter, zing,
       google, tip, linktip, analytics, dangky, tietkiem, hailong, updated_at
     )
@@ -191,6 +191,7 @@ async function ensureSeedData() {
       'XE TAI 365 GROUP',
       'sale@xetai365.vn',
       'https://xetai365.vn',
+      '',
       '0899966254',
       'Binh Duong, Viet Nam',
       '',
