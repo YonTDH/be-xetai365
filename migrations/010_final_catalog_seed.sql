@@ -212,7 +212,7 @@ SELECT
   product_seed.short_description,
   product_seed.content,
   product_seed.technical_specs::jsonb,
-  product_seed.price_vnd::numeric,
+  product_seed.price_vnd,
   product_seed.unit,
   product_seed.status,
   product_seed.brand,

@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS products (
   short_description TEXT NOT NULL DEFAULT '',
   content TEXT NOT NULL DEFAULT '',
   technical_specs JSONB NOT NULL DEFAULT '{}'::jsonb,
-  price_vnd NUMERIC(18,2) NOT NULL DEFAULT 0,
+  price_vnd TEXT NOT NULL DEFAULT '0',
   unit VARCHAR(20) NOT NULL DEFAULT 'unit',
   status VARCHAR(40) NOT NULL DEFAULT 'available',
   brand VARCHAR(120) NOT NULL DEFAULT '',

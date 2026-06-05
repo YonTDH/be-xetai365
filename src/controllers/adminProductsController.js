@@ -42,9 +42,6 @@ function validateProductPayload(payload) {
   if (!payload.title) {
     return "Missing title";
   }
-  if (!Number.isFinite(Number(payload.priceVnd))) {
-    return "Invalid priceVnd";
-  }
   if (!Number.isInteger(payload.sortOrder) || payload.sortOrder < 1) {
     return "Invalid sortOrder";
   }

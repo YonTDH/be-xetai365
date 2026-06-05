@@ -442,7 +442,7 @@ async function ensureSeedData() {
           toSafeString(product.title),
           toSafeString(product.shortDescription),
           toSafeString(product.content),
-          Number(product.priceVnd) || 0,
+          toSafeString(product.priceVnd) || "0",
           toSafeString(product.status) || "available",
           toSafeString(product.brand),
           toSafeString(product.type),
